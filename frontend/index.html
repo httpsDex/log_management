@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IT Office — Login</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
-    * { font-family: 'Syne', sans-serif; }
-    code, .mono { font-family: 'Space Mono', monospace; }
-
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #0a0e1a;
+      font-family: 'DM Sans', sans-serif;
+      background: #0a0f18;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -20,177 +18,159 @@
       overflow: hidden;
     }
 
-    /* Animated grid background */
+    /* Subtle background pattern */
     body::before {
       content: '';
       position: absolute;
       inset: 0;
-      background-image:
-        linear-gradient(rgba(0,255,200,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,255,200,0.04) 1px, transparent 1px);
-      background-size: 40px 40px;
-      animation: gridMove 20s linear infinite;
-    }
-    @keyframes gridMove {
-      0% { transform: translateY(0); }
-      100% { transform: translateY(40px); }
+      background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
+      background-size: 28px 28px;
     }
 
-    /* Glowing orbs */
-    .orb {
+    /* Soft color blobs */
+    .blob {
       position: absolute;
       border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.15;
-      animation: pulse 6s ease-in-out infinite alternate;
+      filter: blur(70px);
+      opacity: 0.18;
     }
-    @keyframes pulse {
-      from { transform: scale(1); opacity: 0.1; }
-      to { transform: scale(1.2); opacity: 0.2; }
-    }
+    .blob-1 { width: 400px; height: 400px; background: #0ea5e9; top: -10%; left: -8%; }
+    .blob-2 { width: 320px; height: 320px; background: #6366f1; bottom: -8%; right: -5%; }
 
     .card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(0,255,200,0.15);
-      backdrop-filter: blur(20px);
+      background: #161d2b;
+      border: 1px solid #1e2a3a;
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 400px;
+      margin: 16px;
       position: relative;
       z-index: 10;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+      animation: slideUp 0.4s ease-out;
     }
 
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(0,255,200,0.6), transparent);
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
+    .logo-wrap {
+      display: flex; flex-direction: column; align-items: center; margin-bottom: 28px;
+    }
+    .logo-icon {
+      width: 52px; height: 52px; border-radius: 12px;
+      background: #0ea5e9;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+    }
+    .logo-icon svg { width: 26px; height: 26px; color: white; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #e2e8f0; }
+    .tagline { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #475569; margin-top: 4px; letter-spacing: 0.05em; }
+
+    .error-box {
+      background: rgba(239,68,68,0.07);
+      border: 1px solid rgba(239,68,68,0.2);
+      color: #dc2626;
+      border-radius: 8px; padding: 9px 13px;
+      font-size: 0.8rem; margin-bottom: 18px;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block; font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: #64748b; margin-bottom: 6px;
+    }
     input {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: white;
-      transition: all 0.3s;
+      width: 100%; padding: 10px 13px; border-radius: 8px;
+      border: 1px solid #1e2a3a; font-size: 0.88rem;
+      font-family: 'DM Sans', sans-serif; color: #e2e8f0;
+      background: #0f1520;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
     input:focus {
-      outline: none;
-      border-color: #00ffc8;
-      background: rgba(0,255,200,0.05);
-      box-shadow: 0 0 0 3px rgba(0,255,200,0.1);
+      outline: none; border-color: #0ea5e9;
+      box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
     }
-    input::placeholder { color: rgba(255,255,255,0.3); }
+    input::placeholder { color: #334155; }
 
     .btn-login {
-      background: linear-gradient(135deg, #00ffc8, #00b4d8);
-      color: #0a0e1a;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      transition: all 0.3s;
-      position: relative;
-      overflow: hidden;
+      width: 100%; padding: 11px; border-radius: 8px;
+      background: #0ea5e9; color: white;
+      font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em;
+      border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: background 0.15s, transform 0.1s;
+      margin-top: 6px;
     }
-    .btn-login::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: white;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .btn-login:hover::after { opacity: 0.1; }
+    .btn-login:hover  { background: #0284c7; }
     .btn-login:active { transform: scale(0.98); }
 
-    .error-msg {
-      background: rgba(255,80,80,0.1);
-      border: 1px solid rgba(255,80,80,0.3);
-      color: #ff8080;
+    .footer-note {
+      font-family: 'DM Mono', monospace;
+      text-align: center; font-size: 0.62rem;
+      color: #334155; margin-top: 22px; letter-spacing: 0.04em;
     }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .card { animation: fadeIn 0.6s ease-out; }
   </style>
 </head>
 <body>
-  <!-- Decorative orbs -->
-  <div class="orb w-96 h-96 bg-cyan-400" style="top:-10%;left:-5%"></div>
-  <div class="orb w-80 h-80 bg-blue-500" style="bottom:-5%;right:-5%;animation-delay:3s"></div>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
 
-  <div class="card rounded-2xl p-10 w-full max-w-md mx-4">
-    <!-- Logo / Header -->
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4"
-           style="background:linear-gradient(135deg,#00ffc8,#00b4d8)">
-        <svg class="w-8 h-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div class="card">
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
         </svg>
       </div>
-      <h1 class="text-2xl font-extrabold text-white tracking-tight">IT Office Portal</h1>
-      <p class="mono text-xs mt-1" style="color:rgba(0,255,200,0.6)">Work Logging Management System</p>
+      <h1>IT Office Portal</h1>
+      <p class="tagline">WORK LOGGING MANAGEMENT SYSTEM</p>
     </div>
 
-    <!-- Error message -->
-    <div id="errorMsg" class="error-msg rounded-lg px-4 py-3 text-sm mb-4 hidden"></div>
+    <div id="errorMsg" class="error-box" style="display:none;"></div>
 
-    <!-- Login Form -->
-    <form id="loginForm" class="space-y-5">
-      <div>
-        <label class="block text-xs font-semibold mb-2" style="color:rgba(255,255,255,0.5);letter-spacing:0.1em">USERNAME</label>
-        <input type="text" id="username" placeholder="admin"
-               class="w-full rounded-lg px-4 py-3 text-sm"/>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="admin" autocomplete="username"/>
       </div>
-      <div>
-        <label class="block text-xs font-semibold mb-2" style="color:rgba(255,255,255,0.5);letter-spacing:0.1em">PASSWORD</label>
-        <input type="password" id="password" placeholder="••••••••"
-               class="w-full rounded-lg px-4 py-3 text-sm"/>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
       </div>
-      <button type="submit" class="btn-login w-full py-3 rounded-lg text-sm mt-2">
-        SIGN IN
-      </button>
+      <button type="submit" class="btn-login">SIGN IN</button>
     </form>
 
-    <p class="mono text-center text-xs mt-6" style="color:rgba(255,255,255,0.2)">
-      v1.0.0 — Admin Access Only
-    </p>
+    <p class="footer-note">v1.0.0 — Admin Access Only</p>
   </div>
 
   <script>
-    // If already logged in, redirect to dashboard
-    if (localStorage.getItem('token')) {
-      window.location.href = 'dashboard.html';
-    }
+    if (localStorage.getItem('token')) window.location.href = 'dashboard.html';
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const errorMsg = document.getElementById('errorMsg');
-
-      errorMsg.classList.add('hidden');
+      errorMsg.style.display = 'none';
 
       try {
-        const res = await fetch('http://localhost:3000/api/login', {
+        const res  = await fetch('http://localhost:3000/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
-
         const data = await res.json();
-
-        if (!res.ok) {
-          errorMsg.textContent = data.message || 'Login failed';
-          errorMsg.classList.remove('hidden');
-          return;
-        }
-
+        if (!res.ok) { errorMsg.textContent = data.message || 'Login failed'; errorMsg.style.display = 'block'; return; }
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', data.username);
         window.location.href = 'dashboard.html';
-      } catch (err) {
+      } catch {
         errorMsg.textContent = 'Cannot connect to server. Make sure the backend is running.';
-        errorMsg.classList.remove('hidden');
+        errorMsg.style.display = 'block';
       }
     });
   </script>

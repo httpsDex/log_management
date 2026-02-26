@@ -5,772 +5,702 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IT Office — Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
-    * { font-family: 'Syne', sans-serif; box-sizing: border-box; }
-    .mono { font-family: 'Space Mono', monospace; }
-
     :root {
-      --accent: #00ffc8;
-      --accent2: #00b4d8;
-      --bg: #0a0e1a;
-      --surface: #111827;
-      --surface2: #1a2235;
-      --border: rgba(255,255,255,0.08);
-      --text: #e2e8f0;
-      --muted: rgba(255,255,255,0.4);
+      --bg:       #0f1520;
+      --sidebar:  #0a0f18;
+      --surface:  #161d2b;
+      --border:   #1e2a3a;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --accent:   #0ea5e9;
+      --accent2:  #0284c7;
+      --success:  #10b981;
+      --warn:     #f59e0b;
+      --danger:   #ef4444;
+      --info:     #818cf8;
     }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .mono { font-family: 'DM Mono', monospace; }
 
-    body { background: var(--bg); color: var(--text); min-height: 100vh; }
-
-    /* Sidebar */
+    /* ── Sidebar ─────────────────────────────────────────────── */
     .sidebar {
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      width: 240px;
-      min-height: 100vh;
-      position: fixed;
-      left: 0; top: 0;
-      display: flex;
-      flex-direction: column;
-      z-index: 50;
+      width: 220px; min-height: 100vh;
+      background: var(--sidebar);
+      position: fixed; left: 0; top: 0; z-index: 50;
+      display: flex; flex-direction: column;
     }
     .sidebar-logo {
-      padding: 24px 20px 16px;
-      border-bottom: 1px solid var(--border);
+      padding: 20px 18px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
     }
+    .logo-badge {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-badge svg { width: 18px; height: 18px; color: white; }
+    .logo-title { font-size: 0.88rem; font-weight: 700; color: white; line-height: 1.2; }
+    .logo-sub { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+    .nav-section { padding: 16px 10px 4px; }
+    .nav-label { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.25); padding: 0 8px; margin-bottom: 4px; }
     .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 20px;
-      cursor: pointer;
-      border-radius: 0;
-      transition: all 0.2s;
-      color: var(--muted);
-      font-size: 0.85rem;
-      font-weight: 600;
-      border-left: 3px solid transparent;
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border-radius: 7px; cursor: pointer;
+      font-size: 0.8rem; font-weight: 500; color: rgba(255,255,255,0.45);
+      transition: all 0.15s; margin-bottom: 2px;
     }
-    .nav-item:hover { background: rgba(0,255,200,0.05); color: var(--text); }
-    .nav-item.active {
-      background: rgba(0,255,200,0.08);
-      color: var(--accent);
-      border-left-color: var(--accent);
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); }
+    .nav-item.active { background: rgba(14,165,233,0.18); color: #38bdf8; }
+    .nav-item.active svg { color: #38bdf8; }
+
+    .sidebar-footer {
+      margin-top: auto; padding: 14px;
+      border-top: 1px solid rgba(255,255,255,0.07);
     }
-    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .user-badge {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--accent); color: white;
+      font-size: 0.75rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-logout {
+      width: 100%; padding: 7px; border-radius: 6px;
+      background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.2);
+      color: #fca5a5; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; transition: all 0.15s; margin-top: 10px;
+    }
+    .btn-logout:hover { background: rgba(239,68,68,0.22); }
 
-    /* Main content */
-    .main { margin-left: 240px; padding: 28px; min-height: 100vh; }
+    /* ── Main ────────────────────────────────────────────────── */
+    .main { margin-left: 220px; padding: 28px 28px 40px; min-height: 100vh; }
+    .page-header { margin-bottom: 22px; }
+    .page-title { font-size: 1.35rem; font-weight: 700; color: var(--text); }
+    .page-sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
 
-    /* Page sections */
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Cards */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
+    /* ── Stat Cards ──────────────────────────────────────────── */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+    .stats-grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 18px;
     }
+    .stat-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+
+    /* ── Card ────────────────────────────────────────────────── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+    .card + .card { margin-top: 16px; }
     .card-header {
-      padding: 18px 22px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
     }
+    .card-title { font-size: 0.88rem; font-weight: 600; color: var(--text); }
 
-    /* Buttons */
+    /* ── Buttons ─────────────────────────────────────────────── */
     .btn {
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      transition: all 0.2s;
-      letter-spacing: 0.03em;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 7px; font-size: 0.78rem;
+      font-weight: 600; cursor: pointer; border: none;
+      font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap;
     }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: #0a0e1a;
-    }
-    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-secondary {
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
-    .btn-warning {
-      background: rgba(251,191,36,0.15);
-      color: #fbbf24;
-      border: 1px solid rgba(251,191,36,0.3);
-    }
-    .btn-warning:hover { background: rgba(251,191,36,0.25); }
-    .btn-success {
-      background: rgba(52,211,153,0.15);
-      color: #34d399;
-      border: 1px solid rgba(52,211,153,0.3);
-    }
-    .btn-success:hover { background: rgba(52,211,153,0.25); }
-    .btn-danger {
-      background: rgba(248,113,113,0.15);
-      color: #f87171;
-      border: 1px solid rgba(248,113,113,0.3);
-    }
-    .btn-sm { padding: 5px 12px; font-size: 0.75rem; }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: #1e2a3a; color: var(--text); }
+    .btn-warn  { background: rgba(245,158,11,0.1); color: #d97706; border: 1px solid rgba(245,158,11,0.25); }
+    .btn-warn:hover  { background: rgba(245,158,11,0.18); }
+    .btn-success { background: rgba(16,185,129,0.1); color: #059669; border: 1px solid rgba(16,185,129,0.25); }
+    .btn-success:hover { background: rgba(16,185,129,0.18); }
+    .btn-info { background: rgba(99,102,241,0.1); color: #4f46e5; border: 1px solid rgba(99,102,241,0.25); }
+    .btn-info:hover { background: rgba(99,102,241,0.18); }
+    .btn-sm { padding: 5px 11px; font-size: 0.73rem; }
 
-    /* Tables */
+    /* ── Table ───────────────────────────────────────────────── */
     .data-table { width: 100%; border-collapse: collapse; }
     .data-table th {
-      text-align: left;
-      padding: 12px 16px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
+      text-align: left; padding: 10px 14px;
+      font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap;
+      background: #111827;
     }
-    .data-table td {
-      padding: 12px 16px;
-      font-size: 0.82rem;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      color: var(--text);
-    }
-    .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .data-table td { padding: 11px 14px; font-size: 0.8rem; border-bottom: 1px solid var(--border); color: var(--text); }
     .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: #1a2235; }
+    .td-mono { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); }
+    .td-name { font-weight: 600; }
+    .td-truncate { max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Status badges */
+    /* ── Badges ──────────────────────────────────────────────── */
     .badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
+      display: inline-flex; align-items: center;
+      padding: 2px 9px; border-radius: 999px;
+      font-size: 0.67rem; font-weight: 700; letter-spacing: 0.04em;
     }
-    .badge-pending { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
-    .badge-repaired { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
-    .badge-completed { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
-    .badge-unserviceable { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
-    .badge-returned { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+    .badge-pending     { background: rgba(245,158,11,0.1);  color: #d97706; }
+    .badge-fixed       { background: rgba(16,185,129,0.1);  color: #059669; }
+    .badge-unserviceable { background: rgba(239,68,68,0.1); color: #dc2626; }
+    .badge-released    { background: rgba(99,102,241,0.1);  color: #4f46e5; }
+    .badge-returned    { background: rgba(16,185,129,0.1);  color: #059669; }
 
-    /* Modal */
+    /* ── Empty State ─────────────────────────────────────────── */
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 0.82rem; }
+    .empty-state svg { width: 36px; height: 36px; margin: 0 auto 10px; opacity: 0.3; display: block; }
+
+    /* ── Modal ───────────────────────────────────────────────── */
     .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(3px); z-index: 200;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
     }
     .modal-overlay.hidden { display: none; }
     .modal-box {
-      background: var(--surface);
-      border: 1px solid rgba(0,255,200,0.2);
-      border-radius: 16px;
-      width: 100%;
-      max-width: 560px;
-      max-height: 90vh;
-      overflow-y: auto;
-      position: relative;
-    }
-    .modal-box::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(0,255,200,0.5), transparent);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; width: 100%; max-width: 540px;
+      max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
     }
     .modal-header {
-      padding: 22px 24px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 1; border-radius: 12px 12px 0 0;
     }
-    .modal-body { padding: 20px 24px 24px; }
+    .modal-title { font-size: 0.95rem; font-weight: 700; color: var(--text); }
+    .modal-close { background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px; border-radius: 5px; transition: color 0.15s; }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 18px 22px 22px; }
 
-    /* Form inputs */
-    .form-group { margin-bottom: 16px; }
-    .form-label {
-      display: block;
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .form-input {
-      width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 0.85rem;
-      font-family: 'Syne', sans-serif;
-      transition: all 0.2s;
-    }
-    .form-input:focus {
-      outline: none;
-      border-color: var(--accent);
-      background: rgba(0,255,200,0.04);
-      box-shadow: 0 0 0 3px rgba(0,255,200,0.08);
-    }
-    .form-input::placeholder { color: rgba(255,255,255,0.2); }
-    select.form-input option { background: var(--surface2); }
-    textarea.form-input { resize: vertical; min-height: 80px; }
-
-    /* Form grid */
+    /* ── Form ────────────────────────────────────────────────── */
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media(max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-grid .span-2 { grid-column: span 2; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-label { font-size: 0.71rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+    .form-input {
+      width: 100%; padding: 8px 11px; border-radius: 7px;
+      border: 1px solid var(--border); background: var(--surface);
+      font-size: 0.83rem; font-family: 'DM Sans', sans-serif; color: var(--text);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(14,165,233,0.12); }
+    .form-input::placeholder { color: #334155; }
+    select.form-input { cursor: pointer; }
+    textarea.form-input { resize: vertical; min-height: 76px; }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
 
     /* Alert */
-    .alert {
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      margin-bottom: 14px;
-    }
-    .alert-error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: #f87171; }
-    .alert-success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; }
+    .alert { padding: 9px 13px; border-radius: 7px; font-size: 0.8rem; margin-bottom: 14px; }
+    .alert-error   { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.2);  color: #dc2626; }
+    .alert-success { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); color: #059669; }
 
-    /* Stats cards */
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
+    /* ── Sidebar backdrop (mobile only) ─────────────────────── */
+    .sidebar-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(2px);
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      display: none;
     }
-    .stat-card .stat-value {
-      font-size: 2rem;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--muted);
-    }
-    .empty-state svg { margin: 0 auto 12px; opacity: 0.3; }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-
-    /* Mobile sidebar toggle */
     @media(max-width: 768px) {
-      .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+      .sidebar-backdrop { display: block; }
+    }
+    .sidebar-backdrop.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Mobile close button — hidden on desktop */
+    .sidebar-close-btn {
+      display: none;
+      position: absolute; top: 14px; right: 14px;
+      background: rgba(255,255,255,0.07); border: none;
+      color: rgba(255,255,255,0.5); border-radius: 6px;
+      width: 28px; height: 28px; cursor: pointer;
+      align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .sidebar-close-btn:hover { background: rgba(255,255,255,0.13); color: white; }
+    .sidebar-close-btn svg { width: 16px; height: 16px; }
+
+    /* Mobile topbar */
+    .mobile-topbar {
+      display: none;
+      align-items: center; gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 30;
+      margin: -28px -28px 20px;
+    }
+    .mobile-menu-btn {
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 7px;
+      width: 34px; height: 34px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .mobile-menu-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+    .mobile-menu-btn svg { width: 18px; height: 18px; }
+
+    /* ── Mobile ──────────────────────────────────────────────── */
+    @media(max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        position: fixed; z-index: 50;
+      }
       .sidebar.open { transform: translateX(0); }
-      .main { margin-left: 0; padding: 16px; }
+      .sidebar-close-btn { display: flex; }
+      .sidebar-backdrop.visible { pointer-events: auto; /* handled globally but kept for specificity */ }
+
+      .main { margin-left: 0; padding: 0; }
+      .main-inner { padding: 16px; }
+      .mobile-topbar { display: flex; }
+      .desktop-header { display: none; }
+
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span-2 { grid-column: span 1; }
+
+      .modal-box { max-width: 100% !important; margin: 0 10px; }
+    }
+
+    @media(min-width: 769px) {
+      .mobile-topbar { display: none !important; }
     }
   </style>
 </head>
 <body>
 
-<!-- ════════════════════ SIDEBAR ════════════════════ -->
+<!-- Sidebar backdrop — clicking closes sidebar on mobile -->
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
 <aside class="sidebar" id="sidebar">
+  <!-- Close button visible only on mobile -->
+  <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  </button>
   <div class="sidebar-logo">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-           style="background:linear-gradient(135deg,#00ffc8,#00b4d8)">
-        <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="logo-badge">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
         </svg>
       </div>
       <div>
-        <div class="text-sm font-extrabold text-white leading-tight">IT Office</div>
-        <div class="mono text-xs" style="color:var(--muted);font-size:0.65rem">Work Logger v1.0</div>
+        <div class="logo-title">IT Office</div>
+        <div class="logo-sub">WORK LOGGER v1.0</div>
       </div>
     </div>
   </div>
 
-  <nav class="flex-1 py-3">
-    <div class="px-4 py-2 mb-1">
-      <span class="mono text-xs" style="color:var(--muted);font-size:0.62rem;letter-spacing:0.1em">REPAIR MODULE</span>
-    </div>
+  <div class="nav-section">
+    <div class="nav-label">Repairs</div>
     <div class="nav-item active" onclick="switchTab('repairLogs')">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-      </svg>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
       Repair Logs
     </div>
     <div class="nav-item" onclick="switchTab('repairHistory')">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-      </svg>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
       Repair History
     </div>
+  </div>
 
-    <div class="px-4 py-2 mb-1 mt-3">
-      <span class="mono text-xs" style="color:var(--muted);font-size:0.62rem;letter-spacing:0.1em">BORROW MODULE</span>
-    </div>
+  <div class="nav-section">
+    <div class="nav-label">Borrowing</div>
     <div class="nav-item" onclick="switchTab('borrowLogs')">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-      </svg>
-      Borrowers Logs
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Borrow Logs
     </div>
     <div class="nav-item" onclick="switchTab('returnHistory')">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-      </svg>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
       Returned Items
     </div>
-  </nav>
+  </div>
 
-  <div class="p-4 border-t" style="border-color:var(--border)">
-    <div class="flex items-center gap-3 mb-3">
-      <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-           style="background:linear-gradient(135deg,#00ffc8,#00b4d8);color:#0a0e1a">
-        A
-      </div>
+  <div class="sidebar-footer">
+    <div style="display:flex;align-items:center;gap:9px;">
+      <div class="user-badge" id="userInitial">A</div>
       <div>
-        <div class="text-xs font-semibold text-white" id="sidebarUsername">Admin</div>
-        <div class="mono text-xs" style="color:var(--muted);font-size:0.65rem">Administrator</div>
+        <div style="font-size:0.78rem;font-weight:600;color:white;" id="sidebarUsername">Admin</div>
+        <div style="font-size:0.65rem;color:rgba(255,255,255,0.35);">Administrator</div>
       </div>
     </div>
-    <button class="btn btn-danger btn-sm w-full" onclick="logout()">Logout</button>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
   </div>
 </aside>
 
-<!-- ════════════════════ MAIN CONTENT ════════════════════ -->
+<!-- ══════════════ MAIN ══════════════ -->
 <main class="main">
 
-  <!-- Mobile header -->
-  <div class="flex items-center gap-3 mb-6 md:hidden">
-    <button onclick="document.getElementById('sidebar').classList.toggle('open')" class="btn btn-secondary btn-sm">☰</button>
-    <span class="font-extrabold text-white">IT Office Dashboard</span>
+  <!-- Sticky mobile topbar -->
+  <div class="mobile-topbar">
+    <button class="mobile-menu-btn" onclick="openSidebar()" aria-label="Open menu">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <span style="font-weight:700;font-size:0.92rem;color:var(--text)" id="mobileTitleBar">Repair Logs</span>
   </div>
 
-  <!-- Page title -->
-  <div class="mb-6 hidden md:block">
-    <h1 class="text-2xl font-extrabold text-white" id="pageTitle">Repair Logs</h1>
-    <p class="text-sm mt-1" style="color:var(--muted)" id="pageSubtitle">Manage and track all repair requests</p>
+  <div class="main-inner">
+
+  <div class="page-header desktop-header">
+    <div class="page-title" id="pageTitle">Repair Logs</div>
+    <div class="page-sub"   id="pageSubtitle">Manage and track all repair requests</div>
   </div>
 
-  <!-- ───── TAB: REPAIR LOGS ───── -->
+  <!-- ── TAB: REPAIR LOGS ── -->
   <div id="tab-repairLogs" class="tab-content active">
-
-    <!-- Stats row -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div class="stat-card">
-        <div class="text-xs font-semibold mb-2" style="color:var(--muted)">PENDING</div>
-        <div class="stat-value" style="color:#fbbf24" id="stat-pending">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="text-xs font-semibold mb-2" style="color:var(--muted)">REPAIRED</div>
-        <div class="stat-value" style="color:#60a5fa" id="stat-repaired">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="text-xs font-semibold mb-2" style="color:var(--muted)">UNSERVICEABLE</div>
-        <div class="stat-value" style="color:#f87171" id="stat-unserviceable">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="text-xs font-semibold mb-2" style="color:var(--muted)">COMPLETED</div>
-        <div class="stat-value" style="color:#34d399" id="stat-completed">—</div>
-      </div>
+    <div class="stats-grid" id="repairStats">
+      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--warn)" id="stat-pending">—</div></div>
+      <div class="stat-card"><div class="stat-label">Fixed</div><div class="stat-value" style="color:var(--success)" id="stat-fixed">—</div></div>
+      <div class="stat-card"><div class="stat-label">Unserviceable</div><div class="stat-value" style="color:var(--danger)" id="stat-unserviceable">—</div></div>
+      <div class="stat-card"><div class="stat-label">Released</div><div class="stat-value" style="color:var(--info)" id="stat-released">—</div></div>
     </div>
 
-    <!-- Pending Repairs Table -->
-    <div class="card mb-6">
-      <div class="card-header">
-        <h2 class="font-bold text-white">Pending Repairs</h2>
-        <button class="btn btn-primary btn-sm" onclick="openModal('newRepairModal')">+ New Repair</button>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Customer</th>
-              <th>Location</th>
-              <th>Item</th>
-              <th>Type</th>
-              <th>Qty</th>
-              <th>Problem</th>
-              <th>Received By</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="pendingRepairsBody">
-            <tr><td colspan="11"><div class="empty-state">Loading...</div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Pickup Section (Repaired items) -->
+    <!-- Pending for repair -->
     <div class="card">
       <div class="card-header">
-        <h2 class="font-bold text-white">Ready for Pickup</h2>
-        <span class="badge badge-repaired">Repaired items</span>
+        <span class="card-title">Pending for Repair</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('newRepairModal')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Repair
+        </button>
       </div>
-      <div class="overflow-x-auto">
+      <div style="overflow-x:auto">
         <table class="data-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Customer</th>
-              <th>Item</th>
-              <th>Repaired By</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="pickupBody">
-            <tr><td colspan="5"><div class="empty-state">Loading...</div></td></tr>
-          </tbody>
+          <thead><tr>
+            <th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Specs / Serial</th><th>Qty</th><th>Problem</th><th>Received By</th><th>Date</th><th>Status</th><th>Action</th>
+          </tr></thead>
+          <tbody id="pendingRepairsBody"><tr><td colspan="11"><div class="empty-state">Loading...</div></td></tr></tbody>
         </table>
       </div>
     </div>
 
+    <!-- Ready for release (Fixed or Unserviceable) -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Ready for Release</span>
+        <span style="font-size:0.72rem;color:var(--muted);">Fixed &amp; Unserviceable items</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr>
+            <th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Repaired By</th><th>Comment</th><th>Status</th><th>Action</th>
+          </tr></thead>
+          <tbody id="releaseBody"><tr><td colspan="8"><div class="empty-state">Loading...</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
-  <!-- ───── TAB: REPAIR HISTORY ───── -->
+  <!-- ── TAB: REPAIR HISTORY ── -->
   <div id="tab-repairHistory" class="tab-content">
     <div class="card">
       <div class="card-header">
-        <h2 class="font-bold text-white">Logged Repairs History</h2>
-        <span class="badge badge-completed">Completed</span>
+        <span class="card-title">Repair History</span>
+        <span class="badge badge-released">Released</span>
       </div>
-      <div class="overflow-x-auto">
+      <div style="overflow-x:auto">
         <table class="data-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Customer</th>
-              <th>Location</th>
-              <th>Item</th>
-              <th>Problem</th>
-              <th>Repaired By</th>
-              <th>Picked Up By</th>
-              <th>Date Picked Up</th>
-              <th>Comment</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="repairHistoryBody">
-            <tr><td colspan="10"><div class="empty-state">Loading...</div></td></tr>
-          </tbody>
+          <thead><tr>
+            <th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Specs</th><th>Problem</th><th>Repaired By</th><th>Claimed By</th><th>Released By</th><th>Date Released</th><th>Status</th>
+          </tr></thead>
+          <tbody id="repairHistoryBody"><tr><td colspan="11"><div class="empty-state">Loading...</div></td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- ───── TAB: BORROW LOGS ───── -->
+  <!-- ── TAB: BORROW LOGS ── -->
   <div id="tab-borrowLogs" class="tab-content">
-
-    <div class="grid grid-cols-2 gap-4 mb-6">
-      <div class="stat-card">
-        <div class="text-xs font-semibold mb-2" style="color:var(--muted)">PENDING RETURNS</div>
-        <div class="stat-value" style="color:#fbbf24" id="stat-borrow-pending">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="text-xs font-semibold mb-2" style="color:var(--muted)">RETURNED</div>
-        <div class="stat-value" style="color:#34d399" id="stat-borrow-returned">—</div>
-      </div>
+    <div class="stats-grid stats-grid-2" style="max-width:480px;margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-label">Pending Returns</div><div class="stat-value" style="color:var(--warn)" id="stat-borrow-pending">—</div></div>
+      <div class="stat-card"><div class="stat-label">Returned</div><div class="stat-value" style="color:var(--success)" id="stat-borrow-returned">—</div></div>
     </div>
-
-    <!-- Pending Borrowed Items -->
-    <div class="card mb-6">
+    <div class="card">
       <div class="card-header">
-        <h2 class="font-bold text-white">Pending Borrowed Items</h2>
-        <button class="btn btn-primary btn-sm" onclick="openModal('newBorrowModal')">+ New Borrow</button>
+        <span class="card-title">Pending Borrowed Items</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('newBorrowModal')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Borrow
+        </button>
       </div>
-      <div class="overflow-x-auto">
+      <div style="overflow-x:auto">
         <table class="data-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Borrower</th>
-              <th>Location</th>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Released By</th>
-              <th>Date Borrowed</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="pendingBorrowBody">
-            <tr><td colspan="9"><div class="empty-state">Loading...</div></td></tr>
-          </tbody>
+          <thead><tr>
+            <th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th><th>Released By</th><th>Date Borrowed</th><th>Status</th><th>Action</th>
+          </tr></thead>
+          <tbody id="pendingBorrowBody"><tr><td colspan="9"><div class="empty-state">Loading...</div></td></tr></tbody>
         </table>
       </div>
     </div>
-
   </div>
 
-  <!-- ───── TAB: RETURN HISTORY ───── -->
+  <!-- ── TAB: RETURN HISTORY ── -->
   <div id="tab-returnHistory" class="tab-content">
     <div class="card">
       <div class="card-header">
-        <h2 class="font-bold text-white">Returned Items History</h2>
+        <span class="card-title">Returned Items History</span>
         <span class="badge badge-returned">Returned</span>
       </div>
-      <div class="overflow-x-auto">
+      <div style="overflow-x:auto">
         <table class="data-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Borrower</th>
-              <th>Location</th>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Returned By</th>
-              <th>Received By</th>
-              <th>Return Date</th>
-              <th>Comments</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="returnHistoryBody">
-            <tr><td colspan="10"><div class="empty-state">Loading...</div></td></tr>
-          </tbody>
+          <thead><tr>
+            <th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th><th>Returned By</th><th>Received By</th><th>Return Date</th><th>Comments</th><th>Status</th>
+          </tr></thead>
+          <tbody id="returnHistoryBody"><tr><td colspan="10"><div class="empty-state">Loading...</div></td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
-
+  </div><!-- end .main-inner -->
 </main>
 
-<!-- ════════════════════ MODALS ════════════════════ -->
+<!-- ══════════════ MODALS ══════════════ -->
 
-<!-- NEW REPAIR MODAL -->
+<!-- NEW REPAIR -->
 <div class="modal-overlay hidden" id="newRepairModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3 class="font-extrabold text-white text-lg">New Repair Entry</h3>
-      <button class="text-gray-400 hover:text-white" onclick="closeModal('newRepairModal')">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
+      <span class="modal-title">New Repair Entry</span>
+      <button class="modal-close" onclick="closeModal('newRepairModal')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body">
       <div id="newRepairAlert"></div>
       <form id="newRepairForm">
         <div class="form-grid">
+
           <div class="form-group">
             <label class="form-label">Customer Name *</label>
-            <input type="text" name="customer_name" class="form-input" placeholder="Juan dela Cruz"/>
+            <input type="text" name="customer_name" class="form-input" placeholder="Full name"/>
           </div>
+
           <div class="form-group">
-            <label class="form-label">Location *</label>
-            <input type="text" name="location" class="form-input" placeholder="Building / Floor / Dept"/>
+            <label class="form-label">Office *</label>
+            <select name="office_select" class="form-input" id="repairOfficeSelect" onchange="toggleOtherInput(this,'repairOfficeOther')">
+              <option value="">Select office...</option>
+            </select>
+            <input type="text" name="office_other" class="form-input" id="repairOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/>
           </div>
+
           <div class="form-group">
             <label class="form-label">Item Name *</label>
-            <input type="text" name="item_name" class="form-input" placeholder="Laptop, Monitor..."/>
+            <input type="text" name="item_name" class="form-input" placeholder="e.g. Printer, Laptop"/>
           </div>
+
           <div class="form-group">
-            <label class="form-label">Item Type *</label>
-            <select name="item_type" class="form-input">
-              <option value="">Select type</option>
-              <option>Laptop</option>
-              <option>Desktop PC</option>
-              <option>Monitor</option>
-              <option>Printer</option>
-              <option>Keyboard</option>
-              <option>Mouse</option>
-              <option>Network Equipment</option>
-              <option>Other</option>
-            </select>
+            <label class="form-label">Model / Specs</label>
+            <input type="text" name="serial_specs" class="form-input" placeholder="e.g. L3210, Core i5 8GB"/>
           </div>
+
           <div class="form-group">
             <label class="form-label">Quantity *</label>
             <input type="number" name="quantity" class="form-input" min="1" value="1"/>
           </div>
+
           <div class="form-group">
-            <label class="form-label">Received By *</label>
-            <input type="text" name="received_by" class="form-input" placeholder="Technician name"/>
-          </div>
-          <div class="form-group" style="grid-column:span 2">
             <label class="form-label">Date Received *</label>
             <input type="date" name="date_received" class="form-input" id="repairDateInput"/>
           </div>
-          <div class="form-group" style="grid-column:span 2">
-            <label class="form-label">Problem Description *</label>
-            <textarea name="problem_description" class="form-input" placeholder="Describe the problem..."></textarea>
+
+          <div class="form-group span-2">
+            <label class="form-label">Received By *</label>
+            <select name="received_by_select" class="form-input" id="repairReceivedBySelect" onchange="toggleOjtInput(this,'repairReceivedByOjt')">
+              <option value="">Select employee...</option>
+            </select>
+            <input type="text" name="received_by_ojt" class="form-input" id="repairReceivedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/>
           </div>
+
+          <div class="form-group span-2">
+            <label class="form-label">Problem Description *</label>
+            <textarea name="problem_description" class="form-input" placeholder="Describe the issue in detail..."></textarea>
+          </div>
+
         </div>
-        <div class="flex gap-3 justify-end mt-2">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('newRepairModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Repair Entry</button>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('newRepairModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Entry</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- UPDATE REPAIR STATUS MODAL -->
+<!-- UPDATE REPAIR STATUS -->
 <div class="modal-overlay hidden" id="updateStatusModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3 class="font-extrabold text-white text-lg">Update Repair Status</h3>
-      <button class="text-gray-400 hover:text-white" onclick="closeModal('updateStatusModal')">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
+      <span class="modal-title">Update Repair Status</span>
+      <button class="modal-close" onclick="closeModal('updateStatusModal')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body">
       <div id="updateStatusAlert"></div>
       <input type="hidden" id="updateRepairId"/>
-      <div class="form-group">
-        <label class="form-label">New Status *</label>
-        <select id="updateStatus" class="form-input">
-          <option value="Repaired">Repaired</option>
-          <option value="Unserviceable">Unserviceable</option>
-        </select>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Status *</label>
+          <select id="updateStatus" class="form-input">
+            <option value="Fixed">Fixed</option>
+            <option value="Unserviceable">Unserviceable</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Repaired By *</label>
+          <select id="updateRepairedBySelect" class="form-input" onchange="toggleOjtInput(this,'updateRepairedByOjt')">
+            <option value="">Select employee...</option>
+          </select>
+          <input type="text" id="updateRepairedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Comment</label>
+          <textarea id="repairComment" class="form-input" placeholder="Optional notes about the repair..."></textarea>
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Repaired By *</label>
-        <input type="text" id="updateRepairedBy" class="form-input" placeholder="Technician name"/>
-      </div>
-      <div class="flex gap-3 justify-end">
-        <button class="btn btn-secondary" onclick="closeModal('updateStatusModal')">Cancel</button>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeModal('updateStatusModal')">Cancel</button>
         <button class="btn btn-primary" onclick="submitUpdateStatus()">Update Status</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- PICKUP MODAL -->
-<div class="modal-overlay hidden" id="pickupModal">
+<!-- RELEASE MODAL -->
+<div class="modal-overlay hidden" id="releaseModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3 class="font-extrabold text-white text-lg">Process Pickup</h3>
-      <button class="text-gray-400 hover:text-white" onclick="closeModal('pickupModal')">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
+      <span class="modal-title">Release Item</span>
+      <button class="modal-close" onclick="closeModal('releaseModal')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body">
-      <div id="pickupAlert"></div>
-      <input type="hidden" id="pickupRepairId"/>
-      <div class="form-group">
-        <label class="form-label">Picked Up By *</label>
-        <input type="text" id="pickedUpBy" class="form-input" placeholder="Who is claiming the item"/>
+      <div id="releaseAlert"></div>
+      <input type="hidden" id="releaseRepairId"/>
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label class="form-label">Claimed By *</label>
+          <input type="text" id="claimedBy" class="form-input" placeholder="Name of person claiming the item"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date Claimed</label>
+          <input type="date" id="dateClaimed" class="form-input"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Released By *</label>
+          <select id="releaseReleasedBySelect" class="form-input" onchange="toggleOjtInput(this,'releaseReleasedByOjt')">
+            <option value="">Select employee...</option>
+          </select>
+          <input type="text" id="releaseReleasedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/>
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Date Picked Up</label>
-        <input type="date" id="datePickedUp" class="form-input"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Comment</label>
-        <textarea id="pickupComment" class="form-input" placeholder="Optional notes..."></textarea>
-      </div>
-      <div class="flex gap-3 justify-end">
-        <button class="btn btn-secondary" onclick="closeModal('pickupModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitPickup()">Complete Pickup</button>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeModal('releaseModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitRelease()">Confirm Release</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- NEW BORROW MODAL -->
+<!-- NEW BORROW -->
 <div class="modal-overlay hidden" id="newBorrowModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3 class="font-extrabold text-white text-lg">New Borrow Entry</h3>
-      <button class="text-gray-400 hover:text-white" onclick="closeModal('newBorrowModal')">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
+      <span class="modal-title">New Borrow Entry</span>
+      <button class="modal-close" onclick="closeModal('newBorrowModal')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body">
       <div id="newBorrowAlert"></div>
       <form id="newBorrowForm">
         <div class="form-grid">
+
           <div class="form-group">
             <label class="form-label">Borrower Name *</label>
             <input type="text" name="borrower_name" class="form-input" placeholder="Full name"/>
           </div>
+
           <div class="form-group">
-            <label class="form-label">Location / Department *</label>
-            <input type="text" name="location" class="form-input" placeholder="Department or floor"/>
+            <label class="form-label">Office *</label>
+            <select name="office_select" class="form-input" id="borrowOfficeSelect" onchange="toggleOtherInput(this,'borrowOfficeOther')">
+              <option value="">Select office...</option>
+            </select>
+            <input type="text" name="office_other" class="form-input" id="borrowOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/>
           </div>
+
           <div class="form-group">
             <label class="form-label">Item Borrowed *</label>
-            <input type="text" name="item_borrowed" class="form-input" placeholder="Laptop, Extension cord..."/>
+            <input type="text" name="item_borrowed" class="form-input" placeholder="e.g. Laptop, Extension cord"/>
           </div>
+
           <div class="form-group">
             <label class="form-label">Quantity *</label>
             <input type="number" name="quantity" class="form-input" min="1" value="1"/>
           </div>
-          <div class="form-group">
-            <label class="form-label">Released By *</label>
-            <input type="text" name="released_by" class="form-input" placeholder="IT Staff name"/>
-          </div>
+
           <div class="form-group">
             <label class="form-label">Date Borrowed *</label>
             <input type="date" name="date_borrowed" class="form-input" id="borrowDateInput"/>
           </div>
+
+          <div class="form-group">
+            <label class="form-label">Released By *</label>
+            <select name="released_by_select" class="form-input" id="borrowReleasedBySelect" onchange="toggleOjtInput(this,'borrowReleasedByOjt')">
+              <option value="">Select employee...</option>
+            </select>
+            <input type="text" name="released_by_ojt" class="form-input" id="borrowReleasedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/>
+          </div>
+
         </div>
-        <div class="flex gap-3 justify-end mt-2">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('newBorrowModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Borrow Entry</button>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('newBorrowModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Entry</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- RETURN MODAL -->
+<!-- PROCESS RETURN -->
 <div class="modal-overlay hidden" id="returnModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3 class="font-extrabold text-white text-lg">Process Return</h3>
-      <button class="text-gray-400 hover:text-white" onclick="closeModal('returnModal')">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
+      <span class="modal-title">Process Return</span>
+      <button class="modal-close" onclick="closeModal('returnModal')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body">
       <div id="returnAlert"></div>
       <input type="hidden" id="returnBorrowId"/>
-      <div class="form-group">
-        <label class="form-label">Returned By *</label>
-        <input type="text" id="returnedBy" class="form-input" placeholder="Borrower's name"/>
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label class="form-label">Returned By *</label>
+          <input type="text" id="returnedBy" class="form-input" placeholder="Borrower's name"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Return Date</label>
+          <input type="date" id="returnDate" class="form-input"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Received By *</label>
+          <select id="returnReceivedBySelect" class="form-input" onchange="toggleOjtInput(this,'returnReceivedByOjt')">
+            <option value="">Select employee...</option>
+          </select>
+          <input type="text" id="returnReceivedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Comments</label>
+          <textarea id="returnComments" class="form-input" placeholder="Optional notes..."></textarea>
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Received By *</label>
-        <input type="text" id="receivedByReturn" class="form-input" placeholder="IT Staff receiving the item"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Return Date</label>
-        <input type="date" id="returnDate" class="form-input"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Comments</label>
-        <textarea id="returnComments" class="form-input" placeholder="Optional notes..."></textarea>
-      </div>
-      <div class="flex gap-3 justify-end">
-        <button class="btn btn-secondary" onclick="closeModal('returnModal')">Cancel</button>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeModal('returnModal')">Cancel</button>
         <button class="btn btn-primary" onclick="submitReturn()">Confirm Return</button>
       </div>
     </div>
