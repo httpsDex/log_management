@@ -4,121 +4,165 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IT Office — Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/main.css"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'DM Sans', sans-serif;
-      background: #0a0f18;
-      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
+      min-height: 100vh;
       overflow: hidden;
+      position: relative;
     }
 
-    /* Subtle background pattern */
+    /* Animated background blobs */
+    .bg-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+    }
+    .blob-1 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(59,130,246,0.15), transparent 70%);
+      top: -15%; left: -10%;
+      animation: blobFloat1 8s ease-in-out infinite;
+    }
+    .blob-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(168,85,247,0.1), transparent 70%);
+      bottom: -10%; right: -8%;
+      animation: blobFloat2 10s ease-in-out infinite;
+    }
+    .blob-3 {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(16,185,129,0.07), transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      animation: blobFloat1 12s ease-in-out infinite reverse;
+    }
+    @keyframes blobFloat1 {
+      0%,100% { transform: translate(0,0); }
+      50%      { transform: translate(30px, -20px); }
+    }
+    @keyframes blobFloat2 {
+      0%,100% { transform: translate(0,0); }
+      50%      { transform: translate(-25px, 15px); }
+    }
+
+    /* Grid overlay */
     body::before {
       content: '';
       position: absolute;
       inset: 0;
-      background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
-      background-size: 28px 28px;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
     }
 
-    /* Soft color blobs */
-    .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(70px);
-      opacity: 0.18;
-    }
-    .blob-1 { width: 400px; height: 400px; background: #0ea5e9; top: -10%; left: -8%; }
-    .blob-2 { width: 320px; height: 320px; background: #6366f1; bottom: -8%; right: -5%; }
-
-    .card {
-      background: #161d2b;
-      border: 1px solid #1e2a3a;
-      border-radius: 16px;
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xl);
       padding: 40px 36px;
       width: 100%;
       max-width: 400px;
       margin: 16px;
       position: relative;
       z-index: 10;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
-      animation: slideUp 0.4s ease-out;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+      animation: cardSlideUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+    }
+    @keyframes cardSlideUp {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
+    /* Gradient top border */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 20%; right: 20%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
     }
 
     .logo-wrap {
-      display: flex; flex-direction: column; align-items: center; margin-bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 32px;
     }
     .logo-icon {
-      width: 52px; height: 52px; border-radius: 12px;
-      background: #0ea5e9;
-      display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 0 24px var(--accent-glow);
+      animation: logoPop 0.6s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     }
-    .logo-icon svg { width: 26px; height: 26px; color: white; }
-    h1 { font-size: 1.2rem; font-weight: 700; color: #e2e8f0; }
-    .tagline { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #475569; margin-top: 4px; letter-spacing: 0.05em; }
+    @keyframes logoPop {
+      from { transform: scale(0.6); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .logo-icon svg { width: 28px; height: 28px; color: white; }
+    .login-title { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+    .login-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--muted);
+      margin-top: 5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
 
     .error-box {
-      background: rgba(239,68,68,0.07);
+      background: rgba(239,68,68,0.08);
       border: 1px solid rgba(239,68,68,0.2);
-      color: #dc2626;
-      border-radius: 8px; padding: 9px 13px;
-      font-size: 0.8rem; margin-bottom: 18px;
+      color: #f87171;
+      border-radius: var(--radius-sm);
+      padding: 10px 13px;
+      font-size: 0.8rem;
+      margin-bottom: 18px;
+      animation: alertIn 0.2s ease;
     }
 
     .form-group { margin-bottom: 16px; }
-    label {
-      display: block; font-size: 0.7rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      color: #64748b; margin-bottom: 6px;
-    }
-    input {
-      width: 100%; padding: 10px 13px; border-radius: 8px;
-      border: 1px solid #1e2a3a; font-size: 0.88rem;
-      font-family: 'DM Sans', sans-serif; color: #e2e8f0;
-      background: #0f1520;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    input:focus {
-      outline: none; border-color: #0ea5e9;
-      box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
-    }
-    input::placeholder { color: #334155; }
 
     .btn-login {
-      width: 100%; padding: 11px; border-radius: 8px;
-      background: #0ea5e9; color: white;
-      font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em;
+      width: 100%; padding: 11px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 0.04em;
       border: none; cursor: pointer;
       font-family: 'DM Sans', sans-serif;
-      transition: background 0.15s, transform 0.1s;
-      margin-top: 6px;
+      transition: all var(--transition);
+      margin-top: 8px;
+      box-shadow: 0 0 20px var(--accent-glow);
     }
-    .btn-login:hover  { background: #0284c7; }
+    .btn-login:hover { box-shadow: 0 0 28px rgba(59,130,246,0.35); transform: translateY(-1px); }
     .btn-login:active { transform: scale(0.98); }
 
     .footer-note {
       font-family: 'DM Mono', monospace;
-      text-align: center; font-size: 0.62rem;
-      color: #334155; margin-top: 22px; letter-spacing: 0.04em;
+      text-align: center;
+      font-size: 0.6rem;
+      color: var(--muted);
+      margin-top: 24px;
+      letter-spacing: 0.06em;
     }
   </style>
 </head>
 <body>
-  <div class="blob blob-1"></div>
-  <div class="blob blob-2"></div>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
 
-  <div class="card">
+  <div class="login-card">
     <div class="logo-wrap">
       <div class="logo-icon">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,25 +170,28 @@
             d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
         </svg>
       </div>
-      <h1>IT Office Logs System</h1>
-      <p class="tagline">REPAIR/BORROW LOGGING MANAGEMENT SYSTEM</p>
+      <div class="login-title">IT Office Logs</div>
+      <div class="login-sub">Repair · Borrow · Management System</div>
     </div>
 
     <div id="errorMsg" class="error-box" style="display:none;"></div>
 
     <form id="loginForm">
       <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" autocomplete="username"/>
+        <label class="form-label" for="username">Username</label>
+        <input type="text" id="username" class="form-input" autocomplete="username" placeholder="Enter username"/>
       </div>
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" autocomplete="current-password"/>
+        <label class="form-label" for="password">Password</label>
+        <input type="password" id="password" class="form-input" autocomplete="current-password" placeholder="••••••••"/>
       </div>
-      <button type="submit" class="btn-login">SIGN IN</button>
+      <button type="submit" class="btn-login" id="loginBtn">SIGN IN</button>
     </form>
+
+    <div class="footer-note">IT OFFICE WORK LOGGING SYSTEM v2.0</div>
   </div>
 
+  <script src="js/config.js"></script>
   <script>
     if (localStorage.getItem('token')) window.location.href = 'dashboard.html';
 
@@ -153,22 +200,34 @@
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const errorMsg = document.getElementById('errorMsg');
+      const btn = document.getElementById('loginBtn');
       errorMsg.style.display = 'none';
+      btn.textContent = 'SIGNING IN...';
+      btn.disabled = true;
 
       try {
-        const res  = await fetch('http://localhost:3000/api/login', {
+        const res = await fetch(`${API_BASE}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
         const data = await res.json();
-        if (!res.ok) { errorMsg.textContent = data.message || 'Login failed'; errorMsg.style.display = 'block'; return; }
+        if (!res.ok) {
+          errorMsg.textContent = data.message || 'Login failed';
+          errorMsg.style.display = 'block';
+          btn.textContent = 'SIGN IN';
+          btn.disabled = false;
+          return;
+        }
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', data.username);
-        window.location.href = 'dashboard.html';
+        btn.textContent = '✓ SUCCESS';
+        setTimeout(() => window.location.href = 'dashboard.html', 300);
       } catch {
         errorMsg.textContent = 'Cannot connect to server. Make sure the backend is running.';
         errorMsg.style.display = 'block';
+        btn.textContent = 'SIGN IN';
+        btn.disabled = false;
       }
     });
   </script>
