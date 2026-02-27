@@ -37,11 +37,19 @@ function fillEmployeeSelect(selectEl) {
 }
 
 function populateAllDropdowns() {
+  // Repairs
   fillOfficeSelect(document.getElementById('repairOfficeSelect'));
-  fillOfficeSelect(document.getElementById('borrowOfficeSelect'));
   fillEmployeeSelect(document.getElementById('repairReceivedBySelect'));
   fillEmployeeSelect(document.getElementById('updateRepairedBySelect'));
   fillEmployeeSelect(document.getElementById('releaseReleasedBySelect'));
+
+  // Borrow
+  fillOfficeSelect(document.getElementById('borrowOfficeSelect'));
   fillEmployeeSelect(document.getElementById('borrowReleasedBySelect'));
   fillEmployeeSelect(document.getElementById('returnReceivedBySelect'));
+
+  // Reservations
+  fillOfficeSelect(document.getElementById('resOfficeSelect'));
+  fillEmployeeSelect(document.getElementById('resReleasedBySelect'));
+  fillEmployeeSelect(document.getElementById('resReturnReceivedBySelect'));
 }

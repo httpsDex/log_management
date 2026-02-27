@@ -7,6 +7,8 @@ function badge(status) {
     Unserviceable: 'badge-unserviceable',
     Released:      'badge-released',
     Returned:      'badge-returned',
+    Active:        'badge-active',
+    Overdue:       'badge-overdue',
   };
   return `<span class="badge ${map[status] || ''}">${status}</span>`;
 }
@@ -64,7 +66,6 @@ function clearAlert(id) {
 function openModal(id)  { document.getElementById(id)?.classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
 
-// Close on backdrop click
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal-overlay')) {
     e.target.classList.add('hidden');
@@ -122,9 +123,7 @@ function animateBars() {
 }
 
 // ─── Delete Confirmation Modal ────────────────────────────────────────────────
-// type: 'repair' | 'borrow'
-// id:   record id
-// label: human-readable name shown in the modal
+// type: 'repair' | 'borrow' | 'reservation'
 let _deleteTarget = { type: null, id: null };
 
 function openDeleteConfirm(type, id, label) {
@@ -144,19 +143,17 @@ async function submitDelete() {
 
   const { type, id } = _deleteTarget;
   let res;
-  if (type === 'repair') {
-    res = await API.deleteRepair(id, password);
-  } else {
-    res = await API.deleteBorrow(id, password);
-  }
+  if (type === 'repair')      res = await API.deleteRepair(id, password);
+  else if (type === 'borrow') res = await API.deleteBorrow(id, password);
+  else                        res = await API.deleteReservation(id, password);
 
   if (!res) return;
 
   if (res.ok) {
     closeModal('deleteConfirmModal');
-    // Reload the appropriate history tab
-    if (type === 'repair') loadRepairHistory();
-    else loadReturnHistory();
+    if (type === 'repair')      loadRepairHistory();
+    else if (type === 'borrow') loadReturnHistory();
+    else                        loadReservationHistory();
   } else {
     showAlert('deleteConfirmAlert', res.data.message || 'Deletion failed.');
   }

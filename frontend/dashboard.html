@@ -5,6 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IT Office — Dashboard</title>
   <link rel="stylesheet" href="css/main.css"/>
+  <style>
+    /* ── Badge extras for new statuses ── */
+    .badge-active   { background: rgba(16,185,129,0.1);  color: #34d399; }
+    .badge-overdue  { background: rgba(239,68,68,0.1);   color: #f87171; }
+
+    /* ── Tech4Ed live timer glow ── */
+    .session-live {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: .68rem; color: var(--success); font-weight: 600;
+    }
+
+    /* ── Reservation date range display ── */
+    .date-range {
+      display: flex; align-items: center; gap: 6px;
+      font-family: 'DM Mono', monospace; font-size: .72rem; color: var(--text2);
+    }
+    .date-range .arrow { color: var(--muted); }
+
+    /* ── Tech4Ed session card in active table ── */
+    .timer-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: .72rem;
+      background: rgba(16,185,129,0.08);
+      color: #34d399;
+      border: 1px solid rgba(16,185,129,0.2);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body>
 
@@ -64,6 +93,26 @@
     </div>
   </div>
 
+  <div class="nav-section">
+    <div class="nav-label">Reservations</div>
+    <div class="nav-item" data-tab="reservationLogs" onclick="switchTab('reservationLogs')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      Reservations
+    </div>
+    <div class="nav-item" data-tab="reservationHistory" onclick="switchTab('reservationHistory')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+      Reservation History
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Tech4Ed</div>
+    <div class="nav-item" data-tab="tech4ed" onclick="switchTab('tech4ed')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Tech4Ed Sessions
+    </div>
+  </div>
+
   <div class="sidebar-footer">
     <div style="display:flex;align-items:center;gap:9px;">
       <div class="user-badge" id="userInitial">A</div>
@@ -83,7 +132,6 @@
 
 <!-- ══════ MAIN ══════ -->
 <main class="main">
-  <!-- Mobile topbar -->
   <div class="mobile-topbar">
     <button class="mobile-menu-btn" onclick="openSidebar()">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -92,7 +140,6 @@
   </div>
 
   <div class="main-inner">
-    <!-- Desktop header -->
     <div class="page-header desktop-header">
       <div class="page-title" id="pageTitle">Dashboard</div>
       <div class="page-sub"   id="pageSubtitle">Overview of all IT office activities</div>
@@ -100,7 +147,6 @@
 
     <!-- ══ TAB: DASHBOARD ══ -->
     <div id="tab-dashboard" class="tab-content active">
-
       <div class="stats-grid">
         <div class="stat-card blue">
           <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:#60a5fa;">
@@ -136,24 +182,22 @@
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;">
         <div class="stat-card green" style="padding:14px 18px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div>
-              <div class="stat-label">Items Released</div>
-              <div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-released">—</div>
-            </div>
-            <div style="font-size:1.8rem;">✓</div>
-          </div>
+          <div class="stat-label">Items Released</div>
+          <div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-released">—</div>
         </div>
         <div class="stat-card blue" style="padding:14px 18px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div>
-              <div class="stat-label">Items Returned</div>
-              <div class="stat-value" style="color:#60a5fa;font-size:1.5rem;" id="ds-returned">—</div>
-            </div>
-            <div style="font-size:1.8rem;">↩</div>
-          </div>
+          <div class="stat-label">Items Returned</div>
+          <div class="stat-value" style="color:#60a5fa;font-size:1.5rem;" id="ds-returned">—</div>
+        </div>
+        <div class="stat-card" style="padding:14px 18px;--card-glow:rgba(59,130,246,0.1);">
+          <div class="stat-label">Active Reservations</div>
+          <div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-reservations">—</div>
+        </div>
+        <div class="stat-card" style="padding:14px 18px;--card-glow:rgba(16,185,129,0.1);">
+          <div class="stat-label">Tech4Ed Today</div>
+          <div class="stat-value" style="color:#818cf8;font-size:1.5rem;" id="ds-tech4ed">—</div>
         </div>
       </div>
 
@@ -172,9 +216,7 @@
         </div>
         <div>
           <div class="card" style="margin-bottom:16px;">
-            <div class="card-header">
-              <span class="card-title">Repair Status</span>
-            </div>
+            <div class="card-header"><span class="card-title">Repair Status</span></div>
             <div class="ring-container">
               <div class="donut-chart">
                 <svg viewBox="0 0 120 120" width="120" height="120">
@@ -205,42 +247,25 @@
     <!-- ══ TAB: REPAIR LOGS ══ -->
     <div id="tab-repairLogs" class="tab-content">
       <div class="stats-grid">
-        <div class="stat-card amber">
-          <div class="stat-label">Pending</div>
-          <div class="stat-value" style="color:var(--warn)" id="stat-pending">—</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-label">Fixed</div>
-          <div class="stat-value" style="color:var(--success)" id="stat-fixed">—</div>
-        </div>
-        <div class="stat-card red">
-          <div class="stat-label">Unserviceable</div>
-          <div class="stat-value" style="color:var(--danger)" id="stat-unserviceable">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Released</div>
-          <div class="stat-value" style="color:var(--info)" id="stat-released">—</div>
-        </div>
+        <div class="stat-card amber"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--warn)" id="stat-pending">—</div></div>
+        <div class="stat-card green"><div class="stat-label">Fixed</div><div class="stat-value" style="color:var(--success)" id="stat-fixed">—</div></div>
+        <div class="stat-card red"><div class="stat-label">Unserviceable</div><div class="stat-value" style="color:var(--danger)" id="stat-unserviceable">—</div></div>
+        <div class="stat-card"><div class="stat-label">Released</div><div class="stat-value" style="color:var(--info)" id="stat-released">—</div></div>
       </div>
-
       <div class="card">
         <div class="card-header">
           <span class="card-title">Pending for Repair</span>
           <button class="btn btn-primary btn-sm" onclick="openModal('newRepairModal')">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            New Repair
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>New Repair
           </button>
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr>
-              <th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Specs</th><th>Qty</th><th>Problem</th><th>Received By</th><th>Date</th><th>Status</th><th>Action</th>
-            </tr></thead>
+            <thead><tr><th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Specs</th><th>Qty</th><th>Problem</th><th>Received By</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
             <tbody id="pendingRepairsBody"><tr><td colspan="11"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
           </table>
         </div>
       </div>
-
       <div class="card">
         <div class="card-header">
           <span class="card-title">Ready for Release</span>
@@ -248,9 +273,7 @@
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr>
-              <th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Repaired By</th><th>Comment</th><th>Status</th><th>Action</th>
-            </tr></thead>
+            <thead><tr><th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Repaired By</th><th>Comment</th><th>Status</th><th>Action</th></tr></thead>
             <tbody id="releaseBody"><tr><td colspan="8"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
           </table>
         </div>
@@ -260,15 +283,10 @@
     <!-- ══ TAB: REPAIR HISTORY ══ -->
     <div id="tab-repairHistory" class="tab-content">
       <div class="card">
-        <div class="card-header">
-          <span class="card-title">Repair History</span>
-          <span class="badge badge-released">Released</span>
-        </div>
+        <div class="card-header"><span class="card-title">Repair History</span><span class="badge badge-released">Released</span></div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr>
-              <th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Specs</th><th>Problem</th><th>Repaired By</th><th>Claimed By</th><th>Released By</th><th>Date Released</th><th>Status</th><th>Action</th>
-            </tr></thead>
+            <thead><tr><th>#</th><th>Customer</th><th>Office</th><th>Item</th><th>Specs</th><th>Problem</th><th>Repaired By</th><th>Claimed By</th><th>Released By</th><th>Date Released</th><th>Status</th><th>Action</th></tr></thead>
             <tbody id="repairHistoryBody"><tr><td colspan="12"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
           </table>
         </div>
@@ -278,28 +296,19 @@
     <!-- ══ TAB: BORROW LOGS ══ -->
     <div id="tab-borrowLogs" class="tab-content">
       <div class="stats-grid stats-grid-2" style="max-width:400px;margin-bottom:16px;">
-        <div class="stat-card amber">
-          <div class="stat-label">Pending Returns</div>
-          <div class="stat-value" style="color:var(--warn)" id="stat-borrow-pending">—</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-label">Returned</div>
-          <div class="stat-value" style="color:var(--success)" id="stat-borrow-returned">—</div>
-        </div>
+        <div class="stat-card amber"><div class="stat-label">Pending Returns</div><div class="stat-value" style="color:var(--warn)" id="stat-borrow-pending">—</div></div>
+        <div class="stat-card green"><div class="stat-label">Returned</div><div class="stat-value" style="color:var(--success)" id="stat-borrow-returned">—</div></div>
       </div>
       <div class="card">
         <div class="card-header">
           <span class="card-title">Pending Borrowed Items</span>
           <button class="btn btn-primary btn-sm" onclick="openModal('newBorrowModal')">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            New Borrow
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>New Borrow
           </button>
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr>
-              <th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th><th>Released By</th><th>Date Borrowed</th><th>Status</th><th>Action</th>
-            </tr></thead>
+            <thead><tr><th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th><th>Released By</th><th>Date Borrowed</th><th>Status</th><th>Action</th></tr></thead>
             <tbody id="pendingBorrowBody"><tr><td colspan="9"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
           </table>
         </div>
@@ -309,16 +318,100 @@
     <!-- ══ TAB: RETURN HISTORY ══ -->
     <div id="tab-returnHistory" class="tab-content">
       <div class="card">
+        <div class="card-header"><span class="card-title">Returned Items History</span><span class="badge badge-returned">Returned</span></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th><th>Returned By</th><th>Received By</th><th>Return Date</th><th>Comments</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="returnHistoryBody"><tr><td colspan="11"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: RESERVATION LOGS ══ -->
+    <div id="tab-reservationLogs" class="tab-content">
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-card amber"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--warn)" id="stat-res-pending">—</div></div>
+        <div class="stat-card green"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--success)" id="stat-res-active">—</div></div>
+        <div class="stat-card red"><div class="stat-label">Overdue</div><div class="stat-value" style="color:var(--danger)" id="stat-res-overdue">—</div></div>
+        <div class="stat-card blue"><div class="stat-label">Returned</div><div class="stat-value" style="color:#60a5fa" id="stat-res-returned">—</div></div>
+      </div>
+      <div class="card">
         <div class="card-header">
-          <span class="card-title">Returned Items History</span>
-          <span class="badge badge-returned">Returned</span>
+          <span class="card-title">Active Reservations</span>
+          <button class="btn btn-primary btn-sm" onclick="openModal('newReservationModal')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>New Reservation
+          </button>
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr>
-              <th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th><th>Returned By</th><th>Received By</th><th>Return Date</th><th>Comments</th><th>Status</th><th>Action</th>
-            </tr></thead>
-            <tbody id="returnHistoryBody"><tr><td colspan="11"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+            <thead><tr><th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th><th>Reserved</th><th>Expected Return</th><th>Released By</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="pendingReservationBody"><tr><td colspan="10"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: RESERVATION HISTORY ══ -->
+    <div id="tab-reservationHistory" class="tab-content">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Reservation Return History</span><span class="badge badge-returned">Returned</span></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th><th>Reserved</th><th>Expected Return</th><th>Returned By</th><th>Received By</th><th>Actual Return</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="reservationHistoryBody"><tr><td colspan="12"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: TECH4ED ══ -->
+    <div id="tab-tech4ed" class="tab-content">
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);max-width:600px;margin-bottom:16px;">
+        <div class="stat-card green">
+          <div class="stat-label">Active Sessions</div>
+          <div class="stat-value" style="color:var(--success)" id="stat-t4e-active">—</div>
+          <div class="stat-change" style="display:flex;align-items:center;gap:5px;"><span class="pulse-dot"></span> Live</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Sessions Today</div>
+          <div class="stat-value" style="color:#60a5fa" id="stat-t4e-today">—</div>
+          <div class="stat-change">Today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Sessions</div>
+          <div class="stat-value" style="color:var(--text)" id="stat-t4e-total">—</div>
+          <div class="stat-change">All loaded</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="card-title">Active Sessions</span>
+            <span class="session-live"><span class="pulse-dot"></span> Live</span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('newTech4EdModal')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Time In
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Time In</th><th>Elapsed</th><th>Action</th></tr></thead>
+            <tbody id="activeTech4EdBody"><tr><td colspan="7"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Completed Sessions Today</span>
+          <span style="font-size:.72rem;color:var(--muted);">Timed out</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Time In</th><th>Time Out</th><th>Duration</th></tr></thead>
+            <tbody id="tech4EdHistoryBody"><tr><td colspan="7"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -334,56 +427,21 @@
   <div class="modal-box">
     <div class="modal-header">
       <span class="modal-title">New Repair Entry</span>
-      <button class="modal-close" onclick="closeModal('newRepairModal')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
+      <button class="modal-close" onclick="closeModal('newRepairModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body">
       <div id="newRepairAlert"></div>
       <form id="newRepairForm">
         <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Customer Name *</label>
-            <input type="text" name="customer_name" class="form-input" placeholder="Full name"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Contact Number</label>
-            <input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Office *</label>
-            <select name="office_select" class="form-input" id="repairOfficeSelect" onchange="toggleOtherInput(this,'repairOfficeOther')">
-              <option value="">Select office...</option>
-            </select>
-            <input type="text" name="office_other" class="form-input" id="repairOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Item Name *</label>
-            <input type="text" name="item_name" class="form-input" placeholder="e.g. Printer, Laptop"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Model / Specs</label>
-            <input type="text" name="serial_specs" class="form-input" placeholder="e.g. L3210, Core i5 8GB"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Quantity *</label>
-            <input type="number" name="quantity" class="form-input" min="1" value="1"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Date Received *</label>
-            <input type="date" name="date_received" class="form-input" id="repairDateInput"/>
-          </div>
-          <div class="form-group span-2">
-            <label class="form-label">Received By *</label>
-            <select name="received_by_select" class="form-input" id="repairReceivedBySelect" onchange="toggleOjtInput(this,'repairReceivedByOjt')">
-              <option value="">Select employee...</option>
-            </select>
-            <input type="text" name="received_by_ojt" class="form-input" id="repairReceivedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/>
-          </div>
-          <div class="form-group span-2">
-            <label class="form-label">Problem Description *</label>
-            <textarea name="problem_description" class="form-input" placeholder="Describe the issue in detail..."></textarea>
-          </div>
+          <div class="form-group"><label class="form-label">Customer Name *</label><input type="text" name="customer_name" class="form-input" placeholder="Full name"/></div>
+          <div class="form-group"><label class="form-label">Contact Number</label><input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/></div>
+          <div class="form-group"><label class="form-label">Office *</label><select name="office_select" class="form-input" id="repairOfficeSelect" onchange="toggleOtherInput(this,'repairOfficeOther')"><option value="">Select office...</option></select><input type="text" name="office_other" class="form-input" id="repairOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/></div>
+          <div class="form-group"><label class="form-label">Item Name *</label><input type="text" name="item_name" class="form-input" placeholder="e.g. Printer, Laptop"/></div>
+          <div class="form-group"><label class="form-label">Model / Specs</label><input type="text" name="serial_specs" class="form-input" placeholder="e.g. L3210, Core i5 8GB"/></div>
+          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" value="1"/></div>
+          <div class="form-group"><label class="form-label">Date Received *</label><input type="date" name="date_received" class="form-input" id="repairDateInput"/></div>
+          <div class="form-group span-2"><label class="form-label">Received By *</label><select name="received_by_select" class="form-input" id="repairReceivedBySelect" onchange="toggleOjtInput(this,'repairReceivedByOjt')"><option value="">Select employee...</option></select><input type="text" name="received_by_ojt" class="form-input" id="repairReceivedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/></div>
+          <div class="form-group span-2"><label class="form-label">Problem Description *</label><textarea name="problem_description" class="form-input" placeholder="Describe the issue in detail..."></textarea></div>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" onclick="closeModal('newRepairModal')">Cancel</button>
@@ -397,39 +455,16 @@
 <!-- UPDATE STATUS -->
 <div class="modal-overlay hidden" id="updateStatusModal">
   <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">Update Repair Status</span>
-      <button class="modal-close" onclick="closeModal('updateStatusModal')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
+    <div class="modal-header"><span class="modal-title">Update Repair Status</span><button class="modal-close" onclick="closeModal('updateStatusModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div id="updateStatusAlert"></div>
       <input type="hidden" id="updateRepairId"/>
       <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Status *</label>
-          <select id="updateStatus" class="form-input">
-            <option value="Fixed">Fixed</option>
-            <option value="Unserviceable">Unserviceable</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Repaired By *</label>
-          <select id="updateRepairedBySelect" class="form-input" onchange="toggleOjtInput(this,'updateRepairedByOjt')">
-            <option value="">Select employee...</option>
-          </select>
-          <input type="text" id="updateRepairedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/>
-        </div>
-        <div class="form-group span-2">
-          <label class="form-label">Comment</label>
-          <textarea id="repairComment" class="form-input" placeholder="Optional notes about the repair..."></textarea>
-        </div>
+        <div class="form-group"><label class="form-label">Status *</label><select id="updateStatus" class="form-input"><option value="Fixed">Fixed</option><option value="Unserviceable">Unserviceable</option></select></div>
+        <div class="form-group"><label class="form-label">Repaired By *</label><select id="updateRepairedBySelect" class="form-input" onchange="toggleOjtInput(this,'updateRepairedByOjt')"><option value="">Select employee...</option></select><input type="text" id="updateRepairedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/></div>
+        <div class="form-group span-2"><label class="form-label">Comment</label><textarea id="repairComment" class="form-input" placeholder="Optional notes about the repair..."></textarea></div>
       </div>
-      <div class="form-actions">
-        <button class="btn btn-ghost" onclick="closeModal('updateStatusModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitUpdateStatus()">Update Status</button>
-      </div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal('updateStatusModal')">Cancel</button><button class="btn btn-primary" onclick="submitUpdateStatus()">Update Status</button></div>
     </div>
   </div>
 </div>
@@ -437,36 +472,16 @@
 <!-- RELEASE -->
 <div class="modal-overlay hidden" id="releaseModal">
   <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">Release Item</span>
-      <button class="modal-close" onclick="closeModal('releaseModal')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
+    <div class="modal-header"><span class="modal-title">Release Item</span><button class="modal-close" onclick="closeModal('releaseModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div id="releaseAlert"></div>
       <input type="hidden" id="releaseRepairId"/>
       <div class="form-grid">
-        <div class="form-group span-2">
-          <label class="form-label">Claimed By *</label>
-          <input type="text" id="claimedBy" class="form-input" placeholder="Name of person claiming the item"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Date Claimed</label>
-          <input type="date" id="dateClaimed" class="form-input"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Released By *</label>
-          <select id="releaseReleasedBySelect" class="form-input" onchange="toggleOjtInput(this,'releaseReleasedByOjt')">
-            <option value="">Select employee...</option>
-          </select>
-          <input type="text" id="releaseReleasedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/>
-        </div>
+        <div class="form-group span-2"><label class="form-label">Claimed By *</label><input type="text" id="claimedBy" class="form-input" placeholder="Name of person claiming the item"/></div>
+        <div class="form-group"><label class="form-label">Date Claimed</label><input type="date" id="dateClaimed" class="form-input"/></div>
+        <div class="form-group"><label class="form-label">Released By *</label><select id="releaseReleasedBySelect" class="form-input" onchange="toggleOjtInput(this,'releaseReleasedByOjt')"><option value="">Select employee...</option></select><input type="text" id="releaseReleasedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/></div>
       </div>
-      <div class="form-actions">
-        <button class="btn btn-ghost" onclick="closeModal('releaseModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitRelease()">Confirm Release</button>
-      </div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal('releaseModal')">Cancel</button><button class="btn btn-primary" onclick="submitRelease()">Confirm Release</button></div>
     </div>
   </div>
 </div>
@@ -474,55 +489,20 @@
 <!-- NEW BORROW -->
 <div class="modal-overlay hidden" id="newBorrowModal">
   <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">New Borrow Entry</span>
-      <button class="modal-close" onclick="closeModal('newBorrowModal')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
+    <div class="modal-header"><span class="modal-title">New Borrow Entry</span><button class="modal-close" onclick="closeModal('newBorrowModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div id="newBorrowAlert"></div>
       <form id="newBorrowForm">
         <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Borrower Name *</label>
-            <input type="text" name="borrower_name" class="form-input" placeholder="Full name"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Contact Number</label>
-            <input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Office *</label>
-            <select name="office_select" class="form-input" id="borrowOfficeSelect" onchange="toggleOtherInput(this,'borrowOfficeOther')">
-              <option value="">Select office...</option>
-            </select>
-            <input type="text" name="office_other" class="form-input" id="borrowOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Item Borrowed *</label>
-            <input type="text" name="item_borrowed" class="form-input" placeholder="e.g. Laptop, Extension cord"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Quantity *</label>
-            <input type="number" name="quantity" class="form-input" min="1" value="1"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Date Borrowed *</label>
-            <input type="date" name="date_borrowed" class="form-input" id="borrowDateInput"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Released By *</label>
-            <select name="released_by_select" class="form-input" id="borrowReleasedBySelect" onchange="toggleOjtInput(this,'borrowReleasedByOjt')">
-              <option value="">Select employee...</option>
-            </select>
-            <input type="text" name="released_by_ojt" class="form-input" id="borrowReleasedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/>
-          </div>
+          <div class="form-group"><label class="form-label">Borrower Name *</label><input type="text" name="borrower_name" class="form-input" placeholder="Full name"/></div>
+          <div class="form-group"><label class="form-label">Contact Number</label><input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/></div>
+          <div class="form-group"><label class="form-label">Office *</label><select name="office_select" class="form-input" id="borrowOfficeSelect" onchange="toggleOtherInput(this,'borrowOfficeOther')"><option value="">Select office...</option></select><input type="text" name="office_other" class="form-input" id="borrowOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/></div>
+          <div class="form-group"><label class="form-label">Item Borrowed *</label><input type="text" name="item_borrowed" class="form-input" placeholder="e.g. Laptop, Extension cord"/></div>
+          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" value="1"/></div>
+          <div class="form-group"><label class="form-label">Date Borrowed *</label><input type="date" name="date_borrowed" class="form-input" id="borrowDateInput"/></div>
+          <div class="form-group"><label class="form-label">Released By *</label><select name="released_by_select" class="form-input" id="borrowReleasedBySelect" onchange="toggleOjtInput(this,'borrowReleasedByOjt')"><option value="">Select employee...</option></select><input type="text" name="released_by_ojt" class="form-input" id="borrowReleasedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/></div>
         </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-ghost" onclick="closeModal('newBorrowModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Entry</button>
-        </div>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" onclick="closeModal('newBorrowModal')">Cancel</button><button type="submit" class="btn btn-primary">Save Entry</button></div>
       </form>
     </div>
   </div>
@@ -531,40 +511,130 @@
 <!-- PROCESS RETURN -->
 <div class="modal-overlay hidden" id="returnModal">
   <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">Process Return</span>
-      <button class="modal-close" onclick="closeModal('returnModal')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
+    <div class="modal-header"><span class="modal-title">Process Return</span><button class="modal-close" onclick="closeModal('returnModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div id="returnAlert"></div>
       <input type="hidden" id="returnBorrowId"/>
       <div class="form-grid">
-        <div class="form-group span-2">
-          <label class="form-label">Returned By *</label>
-          <input type="text" id="returnedBy" class="form-input" placeholder="Borrower's name"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Return Date</label>
-          <input type="date" id="returnDate" class="form-input"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Received By *</label>
-          <select id="returnReceivedBySelect" class="form-input" onchange="toggleOjtInput(this,'returnReceivedByOjt')">
-            <option value="">Select employee...</option>
-          </select>
-          <input type="text" id="returnReceivedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/>
-        </div>
-        <div class="form-group span-2">
-          <label class="form-label">Comments</label>
-          <textarea id="returnComments" class="form-input" placeholder="Optional notes..."></textarea>
-        </div>
+        <div class="form-group span-2"><label class="form-label">Returned By *</label><input type="text" id="returnedBy" class="form-input" placeholder="Borrower's name"/></div>
+        <div class="form-group"><label class="form-label">Return Date</label><input type="date" id="returnDate" class="form-input"/></div>
+        <div class="form-group"><label class="form-label">Received By *</label><select id="returnReceivedBySelect" class="form-input" onchange="toggleOjtInput(this,'returnReceivedByOjt')"><option value="">Select employee...</option></select><input type="text" id="returnReceivedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/></div>
+        <div class="form-group span-2"><label class="form-label">Comments</label><textarea id="returnComments" class="form-input" placeholder="Optional notes..."></textarea></div>
       </div>
-      <div class="form-actions">
-        <button class="btn btn-ghost" onclick="closeModal('returnModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitReturn()">Confirm Return</button>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal('returnModal')">Cancel</button><button class="btn btn-primary" onclick="submitReturn()">Confirm Return</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW RESERVATION -->
+<div class="modal-overlay hidden" id="newReservationModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">New Reservation</span>
+      <button class="modal-close" onclick="closeModal('newReservationModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="newReservationAlert"></div>
+      <form id="newReservationForm">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Borrower Name *</label><input type="text" name="borrower_name" class="form-input" placeholder="Full name"/></div>
+          <div class="form-group"><label class="form-label">Contact Number</label><input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/></div>
+          <div class="form-group"><label class="form-label">Office *</label><select name="office_select" class="form-input" id="resOfficeSelect" onchange="toggleOtherInput(this,'resOfficeOther')"><option value="">Select office...</option></select><input type="text" name="office_other" class="form-input" id="resOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/></div>
+          <div class="form-group"><label class="form-label">Item Name *</label><input type="text" name="item_name" class="form-input" placeholder="e.g. Projector, Camera"/></div>
+          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" value="1"/></div>
+          <div class="form-group">
+            <label class="form-label">Reservation Date *</label>
+            <input type="date" name="reservation_date" class="form-input" id="resDateInput"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expected Return Date *</label>
+            <input type="date" name="expected_return_date" class="form-input" id="resExpectedReturnInput"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Released By *</label>
+            <select name="released_by_select" class="form-input" id="resReleasedBySelect" onchange="toggleOjtInput(this,'resReleasedByOjt')"><option value="">Select employee...</option></select>
+            <input type="text" name="released_by_ojt" class="form-input" id="resReleasedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/>
+          </div>
+        </div>
+        <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:var(--radius-sm);padding:10px 12px;margin-top:4px;margin-bottom:4px;font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:8px;">
+          <svg width="14" height="14" fill="none" stroke="#60a5fa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Item will be marked <strong style="color:var(--text);margin:0 3px;">Active</strong> immediately. Return will move it to Reservation History.
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('newReservationModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Reservation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- RESERVATION RETURN -->
+<div class="modal-overlay hidden" id="reservationReturnModal">
+  <div class="modal-box">
+    <div class="modal-header"><span class="modal-title">Process Reservation Return</span><button class="modal-close" onclick="closeModal('reservationReturnModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div id="resReturnAlert"></div>
+      <input type="hidden" id="resReturnId"/>
+      <div class="form-grid">
+        <div class="form-group span-2"><label class="form-label">Returned By *</label><input type="text" id="resReturnedBy" class="form-input" placeholder="Borrower's name"/></div>
+        <div class="form-group"><label class="form-label">Actual Return Date</label><input type="date" id="resActualReturnDate" class="form-input"/></div>
+        <div class="form-group"><label class="form-label">Received By *</label><select id="resReturnReceivedBySelect" class="form-input" onchange="toggleOjtInput(this,'resReturnReceivedByOjt')"><option value="">Select employee...</option></select><input type="text" id="resReturnReceivedByOjt" class="form-input" placeholder="OJT trainee name" style="display:none;margin-top:6px;"/></div>
+        <div class="form-group span-2"><label class="form-label">Comments</label><textarea id="resReturnComments" class="form-input" placeholder="Optional notes..."></textarea></div>
       </div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal('reservationReturnModal')">Cancel</button><button class="btn btn-primary" onclick="submitReservationReturn()">Confirm Return</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- RESERVATION DETAIL -->
+<div class="modal-overlay hidden" id="reservationDetailModal">
+  <div class="modal-box" style="max-width:620px;">
+    <div class="modal-header">
+      <div><span class="modal-title" id="rsdm-title">Reservation Record</span><div style="margin-top:5px;" id="rsdm-badge"></div></div>
+      <button class="modal-close" onclick="closeModal('reservationDetailModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" id="rsdm-body"></div>
+  </div>
+</div>
+
+<!-- NEW TECH4ED ENTRY -->
+<div class="modal-overlay hidden" id="newTech4EdModal">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-header">
+      <div>
+        <span class="modal-title">Tech4Ed — Time In</span>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:3px;">Computer use session will start immediately</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('newTech4EdModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="newTech4EdAlert"></div>
+      <form id="newTech4EdForm">
+        <div class="form-grid">
+          <div class="form-group span-2"><label class="form-label">Full Name *</label><input type="text" name="t4e_name" class="form-input" placeholder="Enter full name" autocomplete="off"/></div>
+          <div class="form-group"><label class="form-label">Gender *</label>
+            <select name="t4e_gender" class="form-input">
+              <option value="">Select...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Purpose *</label><input type="text" name="t4e_purpose" class="form-input" placeholder="e.g. Research, Online class"/></div>
+        </div>
+        <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:var(--radius-sm);padding:10px 12px;margin-top:4px;font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:8px;">
+          <svg width="14" height="14" fill="none" stroke="#34d399" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Time in will be recorded as <strong style="color:var(--text);margin-left:3px;">now</strong>.
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('newTech4EdModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Start Session
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -573,13 +643,8 @@
 <div class="modal-overlay hidden" id="repairDetailModal">
   <div class="modal-box" style="max-width:620px;">
     <div class="modal-header">
-      <div>
-        <span class="modal-title" id="rdm-title">Repair Record</span>
-        <div style="margin-top:5px;" id="rdm-badge"></div>
-      </div>
-      <button class="modal-close" onclick="closeModal('repairDetailModal')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
+      <div><span class="modal-title" id="rdm-title">Repair Record</span><div style="margin-top:5px;" id="rdm-badge"></div></div>
+      <button class="modal-close" onclick="closeModal('repairDetailModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body" id="rdm-body"></div>
   </div>
@@ -589,58 +654,22 @@
 <div class="modal-overlay hidden" id="returnDetailModal">
   <div class="modal-box" style="max-width:620px;">
     <div class="modal-header">
-      <div>
-        <span class="modal-title" id="bdm-title">Borrow / Return Record</span>
-        <div style="margin-top:5px;" id="bdm-badge"></div>
-      </div>
-      <button class="modal-close" onclick="closeModal('returnDetailModal')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
+      <div><span class="modal-title" id="bdm-title">Borrow / Return Record</span><div style="margin-top:5px;" id="bdm-badge"></div></div>
+      <button class="modal-close" onclick="closeModal('returnDetailModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body" id="bdm-body"></div>
   </div>
 </div>
-
-<style>
-.detail-section { margin-bottom: 20px; }
-.detail-section:last-child { margin-bottom: 0; }
-.detail-section-title {
-  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.12em; color: var(--muted); margin-bottom: 10px;
-  padding-bottom: 6px; border-bottom: 1px solid var(--border);
-}
-.detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.detail-field { display: flex; flex-direction: column; gap: 3px; }
-.detail-label {
-  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--muted);
-}
-.detail-value { font-size: 0.85rem; color: var(--text); font-weight: 500; word-break: break-word; }
-.detail-value.mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text2); }
-.detail-value.long {
-  font-size: 0.82rem; line-height: 1.5; color: var(--text2);
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 2px;
-}
-.detail-span-2 { grid-column: span 2; }
-.detail-divider { height: 1px; background: var(--border); margin: 16px 0; }
-</style>
-
-<!-- ══════ SCRIPTS ══════ -->
 
 <!-- DELETE CONFIRMATION MODAL -->
 <div class="modal-overlay hidden" id="deleteConfirmModal">
   <div class="modal-box" style="max-width:420px;">
     <div class="modal-header" style="border-bottom-color:rgba(239,68,68,0.2);">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:32px;height:32px;border-radius:8px;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg width="16" height="16" fill="none" stroke="#f87171" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-        </div>
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" fill="none" stroke="#f87171" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></div>
         <span class="modal-title" style="color:#f87171;">Delete Record</span>
       </div>
-      <button class="modal-close" onclick="closeModal('deleteConfirmModal')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
+      <button class="modal-close" onclick="closeModal('deleteConfirmModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body">
       <div id="deleteConfirmAlert"></div>
@@ -648,16 +677,8 @@
         <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#f87171;margin-bottom:4px;">Record to be deleted</div>
         <div id="deleteRecordLabel" style="font-size:.85rem;color:var(--text);font-weight:500;"></div>
       </div>
-      <p style="font-size:.8rem;color:var(--text2);margin-bottom:16px;line-height:1.5;">
-        This action is <strong style="color:var(--text);">permanent</strong> and cannot be undone.
-        Enter your admin password to confirm.
-      </p>
-      <div class="form-group">
-        <label class="form-label">Admin Password *</label>
-        <input type="password" id="deleteAdminPassword" class="form-input"
-          placeholder="Enter your password"
-          onkeydown="if(event.key==='Enter') submitDelete()"/>
-      </div>
+      <p style="font-size:.8rem;color:var(--text2);margin-bottom:16px;line-height:1.5;">This action is <strong style="color:var(--text);">permanent</strong> and cannot be undone. Enter your admin password to confirm.</p>
+      <div class="form-group"><label class="form-label">Admin Password *</label><input type="password" id="deleteAdminPassword" class="form-input" placeholder="Enter your password" onkeydown="if(event.key==='Enter') submitDelete()"/></div>
       <div class="form-actions" style="margin-top:16px;">
         <button class="btn btn-ghost" onclick="closeModal('deleteConfirmModal')">Cancel</button>
         <button class="btn btn-sm" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);padding:8px 16px;font-size:.78rem;font-weight:600;" onclick="submitDelete()">
@@ -669,6 +690,20 @@
   </div>
 </div>
 
+<style>
+.detail-section { margin-bottom: 20px; }
+.detail-section:last-child { margin-bottom: 0; }
+.detail-section-title { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.detail-field { display: flex; flex-direction: column; gap: 3px; }
+.detail-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.detail-value { font-size: 0.85rem; color: var(--text); font-weight: 500; word-break: break-word; }
+.detail-value.mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text2); }
+.detail-value.long { font-size: 0.82rem; line-height: 1.5; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 2px; }
+.detail-span-2 { grid-column: span 2; }
+</style>
+
+<!-- ══════ SCRIPTS ══════ -->
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script src="js/utils.js"></script>
@@ -677,6 +712,8 @@
 <script src="js/dashboard-tab.js"></script>
 <script src="js/repairs.js"></script>
 <script src="js/borrows.js"></script>
+<script src="js/reservations.js"></script>
+<script src="js/tech4ed.js"></script>
 <script>
   if (!localStorage.getItem('token')) window.location.href = 'index.html';
 
@@ -691,7 +728,9 @@
   }
 
   document.getElementById('repairDateInput').value = today();
-  document.getElementById('borrowDateInput').value = today();
+  document.getElementById('borrowDateInput').value  = today();
+  document.getElementById('resDateInput').value     = today();
+  document.getElementById('resExpectedReturnInput').value = today();
 
   loadLookups().then(() => loadDashboard());
 </script>

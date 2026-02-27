@@ -1,11 +1,14 @@
 // ─── Navigation Module ───────────────────────────────────────────────────────
 
 const tabMeta = {
-  dashboard:     ['Dashboard',     'Overview of all IT office activities'],
-  repairLogs:    ['Repair Logs',   'Manage and track all repair requests'],
-  repairHistory: ['Repair History','All released repair records'],
-  borrowLogs:    ['Borrow Logs',   'Manage borrowed items'],
-  returnHistory: ['Returned Items','All returned item records'],
+  dashboard:          ['Dashboard',            'Overview of all IT office activities'],
+  repairLogs:         ['Repair Logs',          'Manage and track all repair requests'],
+  repairHistory:      ['Repair History',       'All released repair records'],
+  borrowLogs:         ['Borrow Logs',          'Manage borrowed items'],
+  returnHistory:      ['Returned Items',       'All returned item records'],
+  reservationLogs:    ['Reservations',         'Manage item reservations with date ranges'],
+  reservationHistory: ['Reservation History',  'All returned reservation records'],
+  tech4ed:            ['Tech4Ed Sessions',     'Computer use time-in / time-out tracking'],
 };
 
 function switchTab(name) {
@@ -18,22 +21,24 @@ function switchTab(name) {
   });
 
   const [title, sub] = tabMeta[name] || ['', ''];
-  const titleEl = document.getElementById('pageTitle');
-  const subEl   = document.getElementById('pageSubtitle');
+  const titleEl  = document.getElementById('pageTitle');
+  const subEl    = document.getElementById('pageSubtitle');
   const mobileEl = document.getElementById('mobileTitleBar');
 
-  if (titleEl) titleEl.textContent = title;
-  if (subEl)   subEl.textContent   = sub;
+  if (titleEl)  titleEl.textContent  = title;
+  if (subEl)    subEl.textContent    = sub;
   if (mobileEl) mobileEl.textContent = title;
 
   closeSidebar();
 
-  // Load data for the tab
-  if (name === 'dashboard')     loadDashboard();
-  if (name === 'repairLogs')    loadRepairLogs();
-  if (name === 'repairHistory') loadRepairHistory();
-  if (name === 'borrowLogs')    loadBorrowLogs();
-  if (name === 'returnHistory') loadReturnHistory();
+  if (name === 'dashboard')          loadDashboard();
+  if (name === 'repairLogs')         loadRepairLogs();
+  if (name === 'repairHistory')      loadRepairHistory();
+  if (name === 'borrowLogs')         loadBorrowLogs();
+  if (name === 'returnHistory')      loadReturnHistory();
+  if (name === 'reservationLogs')    loadReservations();
+  if (name === 'reservationHistory') loadReservationHistory();
+  if (name === 'tech4ed')            loadTech4Ed();
 }
 
 // Sidebar open/close (mobile)

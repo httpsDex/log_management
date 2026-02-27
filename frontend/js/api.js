@@ -37,4 +37,15 @@ const API = {
   createBorrow: (body) => apiFetch('/borrowed', 'POST', body),
   returnBorrow: (id, body) => apiFetch(`/borrowed/${id}/return`, 'PATCH', body),
   deleteBorrow: (id, admin_password) => apiFetch(`/borrowed/${id}`, 'DELETE', { admin_password }),
+
+  // Reservations
+  getReservations:    () => apiFetch('/reservations'),
+  createReservation:  (body) => apiFetch('/reservations', 'POST', body),
+  returnReservation:  (id, body) => apiFetch(`/reservations/${id}/return`, 'PATCH', body),
+  deleteReservation:  (id, admin_password) => apiFetch(`/reservations/${id}`, 'DELETE', { admin_password }),
+
+  // Tech4Ed
+  getTech4Ed:    () => apiFetch('/tech4ed'),
+  createTech4Ed: (body) => apiFetch('/tech4ed', 'POST', body),
+  timeoutTech4Ed:(id) => apiFetch(`/tech4ed/${id}/timeout`, 'PATCH'),
 };

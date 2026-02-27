@@ -167,7 +167,6 @@ app.patch('/api/repairs/:id/release', auth, async (req, res) => {
   }
 });
 
-// ─── DELETE REPAIR (admin password required) ──────────────────────────────────
 app.delete('/api/repairs/:id', auth, async (req, res) => {
   const { admin_password } = req.body;
   if (!admin_password?.trim())
@@ -246,7 +245,6 @@ app.patch('/api/borrowed/:id/return', auth, async (req, res) => {
   }
 });
 
-// ─── DELETE BORROWED ITEM (admin password required) ───────────────────────────
 app.delete('/api/borrowed/:id', auth, async (req, res) => {
   const { admin_password } = req.body;
   if (!admin_password?.trim())
@@ -262,6 +260,145 @@ app.delete('/api/borrowed/:id', auth, async (req, res) => {
     res.json({ message: 'Borrow record deleted successfully.' });
   } catch (err) {
     console.error('DELETE borrowed error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ─── RESERVATIONS ─────────────────────────────────────────────────────────────
+
+app.get('/api/reservations', auth, async (req, res) => {
+  try { res.json(await query('SELECT * FROM reservations ORDER BY created_at DESC', [])); }
+  catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
+});
+
+app.post('/api/reservations', auth, async (req, res) => {
+  const validErr = validate(
+    ['borrower_name','office','item_name','quantity','reservation_date','expected_return_date','released_by'],
+    req.body
+  );
+  if (validErr) return res.status(400).json({ message: validErr });
+
+  const {
+    borrower_name, contact_number, office, item_name,
+    quantity, reservation_date, expected_return_date, released_by,
+  } = req.body;
+
+  if (expected_return_date < reservation_date)
+    return res.status(400).json({ message: 'Expected return date must be after reservation date.' });
+
+  const contactValue = contact_number ? String(contact_number).trim() || null : null;
+  const now = moment().format('YYYY-MM-DD HH:mm:ss');
+
+  try {
+    const result = await query(
+      `INSERT INTO reservations
+         (borrower_name, contact_number, office, item_name, quantity,
+          reservation_date, expected_return_date, released_by,
+          status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?)`,
+      [borrower_name, contactValue, office, item_name, quantity,
+       reservation_date, expected_return_date, released_by, now, now]
+    );
+    res.status(201).json({ message: 'Reservation created', id: result.insertId });
+  } catch (err) {
+    console.error('INSERT reservations error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+app.patch('/api/reservations/:id/return', auth, async (req, res) => {
+  const { returned_by, received_by, actual_return_date, comments } = req.body;
+  if (!returned_by?.trim()) return res.status(400).json({ message: 'returned_by is required' });
+  if (!received_by?.trim()) return res.status(400).json({ message: 'received_by is required' });
+  const returnDate = actual_return_date || moment().format('YYYY-MM-DD');
+  const now = moment().format('YYYY-MM-DD HH:mm:ss');
+  try {
+    await query(
+      `UPDATE reservations
+       SET returned_by=?, received_by=?, actual_return_date=?, comments=?, status='Returned', updated_at=?
+       WHERE id=? AND status IN ('Active','Overdue')`,
+      [returned_by, received_by, returnDate, comments || '', now, req.params.id]
+    );
+    res.json({ message: 'Reservation marked as returned.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+app.delete('/api/reservations/:id', auth, async (req, res) => {
+  const { admin_password } = req.body;
+  if (!admin_password?.trim())
+    return res.status(400).json({ message: 'Admin password is required to delete a record.' });
+  try {
+    const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+    if (!rows.length) return res.status(401).json({ message: 'User not found.' });
+    const match = await bcrypt.compare(admin_password, rows[0].password);
+    if (!match) return res.status(401).json({ message: 'Incorrect password. Deletion cancelled.' });
+    const result = await query('DELETE FROM reservations WHERE id = ?', [req.params.id]);
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: 'Record not found.' });
+    res.json({ message: 'Reservation deleted successfully.' });
+  } catch (err) {
+    console.error('DELETE reservation error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ─── TECH4ED ──────────────────────────────────────────────────────────────────
+
+app.get('/api/tech4ed', auth, async (req, res) => {
+  try {
+    // Return today's sessions + all active (no time_out) from previous days
+    const rows = await query(
+      `SELECT * FROM tech4ed
+       WHERE DATE(time_in) = CURDATE() OR time_out IS NULL
+       ORDER BY time_in DESC`,
+      []
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+app.get('/api/tech4ed/all', auth, async (req, res) => {
+  try { res.json(await query('SELECT * FROM tech4ed ORDER BY time_in DESC', [])); }
+  catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
+});
+
+app.post('/api/tech4ed', auth, async (req, res) => {
+  const validErr = validate(['name','gender','purpose'], req.body);
+  if (validErr) return res.status(400).json({ message: validErr });
+
+  const { name, gender, purpose } = req.body;
+  if (!['Male','Female','Other'].includes(gender))
+    return res.status(400).json({ message: 'Gender must be Male, Female, or Other' });
+
+  const now = moment().format('YYYY-MM-DD HH:mm:ss');
+  try {
+    const result = await query(
+      `INSERT INTO tech4ed (name, gender, purpose, time_in, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [name.trim(), gender, purpose.trim(), now, now]
+    );
+    res.status(201).json({ message: 'Session started', id: result.insertId });
+  } catch (err) {
+    console.error('INSERT tech4ed error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+app.patch('/api/tech4ed/:id/timeout', auth, async (req, res) => {
+  const now = moment().format('YYYY-MM-DD HH:mm:ss');
+  try {
+    const result = await query(
+      `UPDATE tech4ed SET time_out=? WHERE id=? AND time_out IS NULL`,
+      [now, req.params.id]
+    );
+    if (result.affectedRows === 0)
+      return res.status(400).json({ message: 'Session not found or already timed out.' });
+    res.json({ message: 'Time out recorded.' });
+  } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
