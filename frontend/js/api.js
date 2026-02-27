@@ -35,4 +35,7 @@ const API = {
 
   createBorrow: (body) => apiFetch('/borrowed', 'POST', body),
   returnBorrow: (id, body) => apiFetch(`/borrowed/${id}/return`, 'PATCH', body),
+
+  deleteRepair: (id, password) => apiFetch(`/repairs/${id}`, 'DELETE', { password }),
+  deleteBorrow: (id, password) => apiFetch(`/borrowed/${id}`, 'DELETE', { password }),
 };

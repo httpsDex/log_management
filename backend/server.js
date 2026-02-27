@@ -38,7 +38,6 @@ db.connect((err) => {
 });
 
 // ─── Auto-run Migrations ──────────────────────────────────────────────────────
-// Safely adds contact_number column to both tables if it does not already exist.
 function runMigrations() {
   const migrations = [
     {
@@ -150,12 +149,7 @@ app.post('/api/repairs', auth, async (req, res) => {
     contact_number,
   } = req.body;
 
-  let hashedContact = null;
-  const raw = contact_number ? String(contact_number).trim() : '';
-  if (raw !== '') {
-    hashedContact = await bcrypt.hash(raw, 10);
-    console.log('Contact number hashed for repair entry');
-  }
+  const contactValue = contact_number ? String(contact_number).trim() || null : null;
 
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
@@ -165,7 +159,7 @@ app.post('/api/repairs', auth, async (req, res) => {
           quantity, date_received, received_by, problem_description,
           status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)`,
-      [customer_name, hashedContact, office, item_name, serial_specs || null,
+      [customer_name, contactValue, office, item_name, serial_specs || null,
        quantity, date_received, received_by, problem_description, now, now]
     );
     res.status(201).json({ message: 'Repair entry created', id: result.insertId });
@@ -232,12 +226,7 @@ app.post('/api/borrowed', auth, async (req, res) => {
     contact_number,
   } = req.body;
 
-  let hashedContact = null;
-  const raw = contact_number ? String(contact_number).trim() : '';
-  if (raw !== '') {
-    hashedContact = await bcrypt.hash(raw, 10);
-    console.log('Contact number hashed for borrow entry');
-  }
+  const contactValue = contact_number ? String(contact_number).trim() || null : null;
 
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
@@ -247,7 +236,7 @@ app.post('/api/borrowed', auth, async (req, res) => {
           quantity, released_by, date_borrowed,
           status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)`,
-      [borrower_name, hashedContact, office, item_borrowed,
+      [borrower_name, contactValue, office, item_borrowed,
        quantity, released_by, date_borrowed, now, now]
     );
     res.status(201).json({ message: 'Borrow entry created', id: result.insertId });

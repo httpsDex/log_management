@@ -101,7 +101,6 @@
     <!-- ══ TAB: DASHBOARD ══ -->
     <div id="tab-dashboard" class="tab-content active">
 
-      <!-- Top stats row -->
       <div class="stats-grid">
         <div class="stat-card blue">
           <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:#60a5fa;">
@@ -111,7 +110,6 @@
           <div class="stat-value" style="color:#60a5fa;" id="ds-total-repairs">—</div>
           <div class="stat-change">All time</div>
         </div>
-
         <div class="stat-card amber">
           <div class="stat-icon" style="background:rgba(245,158,11,0.12);color:#fbbf24;">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -120,7 +118,6 @@
           <div class="stat-value" style="color:#fbbf24;" id="ds-pending-repairs">—</div>
           <div class="stat-change">Awaiting service</div>
         </div>
-
         <div class="stat-card green">
           <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:#34d399;">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
@@ -129,7 +126,6 @@
           <div class="stat-value" style="color:#34d399;" id="ds-total-borrowed">—</div>
           <div class="stat-change">All time</div>
         </div>
-
         <div class="stat-card purple">
           <div class="stat-icon" style="background:rgba(168,85,247,0.12);color:#c084fc;">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
@@ -140,7 +136,6 @@
         </div>
       </div>
 
-      <!-- Second stats row -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
         <div class="stat-card green" style="padding:14px 18px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -162,9 +157,7 @@
         </div>
       </div>
 
-      <!-- Dashboard main grid -->
       <div class="dashboard-grid">
-        <!-- Activity feed -->
         <div class="card">
           <div class="card-header">
             <span class="card-title">Recent Activity</span>
@@ -177,10 +170,7 @@
             <li style="padding:40px;text-align:center;color:var(--muted);font-size:.8rem;">Loading...</li>
           </ul>
         </div>
-
-        <!-- Right column -->
         <div>
-          <!-- Donut chart -->
           <div class="card" style="margin-bottom:16px;">
             <div class="card-header">
               <span class="card-title">Repair Status</span>
@@ -199,8 +189,6 @@
               <ul class="legend" id="donut-legend"></ul>
             </div>
           </div>
-
-          <!-- Office bar chart -->
           <div class="card">
             <div class="card-header">
               <span class="card-title">By Office</span>
@@ -359,9 +347,7 @@
             <input type="text" name="customer_name" class="form-input" placeholder="Full name"/>
           </div>
           <div class="form-group">
-            <label class="form-label">Contact Number
-              <span style="font-size:.58rem;color:var(--muted);font-weight:400;letter-spacing:.04em;margin-left:4px;">will be encrypted</span>
-            </label>
+            <label class="form-label">Contact Number</label>
             <input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/>
           </div>
           <div class="form-group">
@@ -503,9 +489,7 @@
             <input type="text" name="borrower_name" class="form-input" placeholder="Full name"/>
           </div>
           <div class="form-group">
-            <label class="form-label">Contact Number
-              <span style="font-size:.58rem;color:var(--muted);font-weight:400;letter-spacing:.04em;margin-left:4px;">will be encrypted</span>
-            </label>
+            <label class="form-label">Contact Number</label>
             <input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/>
           </div>
           <div class="form-group">
@@ -618,57 +602,28 @@
 </div>
 
 <style>
-/* ── Detail view layout ── */
-.detail-section {
-  margin-bottom: 20px;
-}
+.detail-section { margin-bottom: 20px; }
 .detail-section:last-child { margin-bottom: 0; }
 .detail-section-title {
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--muted); margin-bottom: 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
 }
-.detail-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
+.detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .detail-field { display: flex; flex-direction: column; gap: 3px; }
 .detail-label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
+  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted);
 }
-.detail-value {
-  font-size: 0.85rem;
-  color: var(--text);
-  font-weight: 500;
-  word-break: break-word;
-}
+.detail-value { font-size: 0.85rem; color: var(--text); font-weight: 500; word-break: break-word; }
 .detail-value.mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text2); }
 .detail-value.long {
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: var(--text2);
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-  margin-top: 2px;
+  font-size: 0.82rem; line-height: 1.5; color: var(--text2);
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 2px;
 }
 .detail-span-2 { grid-column: span 2; }
-.detail-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 16px 0;
-}
+.detail-divider { height: 1px; background: var(--border); margin: 16px 0; }
 </style>
 
 <!-- ══════ SCRIPTS ══════ -->
@@ -681,7 +636,6 @@
 <script src="js/repairs.js"></script>
 <script src="js/borrows.js"></script>
 <script>
-  // ─── Auth Guard ───────────────────────────────────────────────────────────
   if (!localStorage.getItem('token')) window.location.href = 'index.html';
 
   const username = localStorage.getItem('username') || 'Admin';
@@ -694,11 +648,9 @@
     window.location.href = 'index.html';
   }
 
-  // ─── Init ─────────────────────────────────────────────────────────────────
   document.getElementById('repairDateInput').value = today();
   document.getElementById('borrowDateInput').value = today();
 
-  // Load dropdowns then render the default tab (dashboard)
   loadLookups().then(() => loadDashboard());
 </script>
 </body>
