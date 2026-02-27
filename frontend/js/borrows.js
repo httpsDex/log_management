@@ -47,10 +47,14 @@ async function loadReturnHistory() {
         <td class="td-mono">${fmtDate(b.return_date)}</td>
         <td class="td-truncate" title="${b.comments || ''}">${b.comments || '—'}</td>
         <td>${badge(b.status)}</td>
-        <td>
+        <td style="display:flex;gap:6px;">
           <button class="btn btn-info btn-sm" onclick="openReturnDetail(${b.id})">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             View
+          </button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2);" onclick="openDeleteConfirm('borrow', ${b.id}, '${b.borrower_name.replace(/'/g,"\\'")} — ${b.item_borrowed.replace(/'/g,"\\'")}')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Delete
           </button>
         </td>
       </tr>`).join('');
@@ -81,7 +85,6 @@ function openReturnDetail(id) {
         </div>
       </div>
     </div>
-
     <div class="detail-section">
       <div class="detail-section-title">Item Details</div>
       <div class="detail-grid-2">
@@ -95,7 +98,6 @@ function openReturnDetail(id) {
         </div>
       </div>
     </div>
-
     <div class="detail-section">
       <div class="detail-section-title">Borrow Details</div>
       <div class="detail-grid-2">
@@ -109,7 +111,6 @@ function openReturnDetail(id) {
         </div>
       </div>
     </div>
-
     <div class="detail-section">
       <div class="detail-section-title">Return Details</div>
       <div class="detail-grid-2">
@@ -133,7 +134,6 @@ function openReturnDetail(id) {
       </div>
     </div>
   `;
-
   openModal('returnDetailModal');
 }
 
@@ -151,12 +151,12 @@ document.getElementById('newBorrowForm')?.addEventListener('submit', async (e) =
   );
 
   const body = {
-    borrower_name: f.elements['borrower_name'].value.trim(),
+    borrower_name:  f.elements['borrower_name'].value.trim(),
     office,
-    item_borrowed: f.elements['item_borrowed'].value.trim(),
-    quantity:      f.elements['quantity'].value,
+    item_borrowed:  f.elements['item_borrowed'].value.trim(),
+    quantity:       f.elements['quantity'].value,
     released_by,
-    date_borrowed: f.elements['date_borrowed'].value,
+    date_borrowed:  f.elements['date_borrowed'].value,
     contact_number: f.elements['contact_number'].value.trim(),
   };
 
@@ -198,7 +198,7 @@ async function submitReturn() {
   const received_by = resolveSelectValue(
     document.getElementById('returnReceivedBySelect'), 'returnReceivedByOjt', '', 'returnReceivedByOjt'
   );
-  const comments    = document.getElementById('returnComments').value.trim();
+  const comments = document.getElementById('returnComments').value.trim();
 
   if (!returned_by) { showAlert('returnAlert', 'Please enter who returned the item.'); return; }
   if (!received_by) { showAlert('returnAlert', 'Please select who received the item.'); return; }

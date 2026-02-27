@@ -29,13 +29,12 @@ const API = {
   getRepairs:   () => apiFetch('/repairs'),
   getBorrowed:  () => apiFetch('/borrowed'),
 
-  createRepair: (body) => apiFetch('/repairs', 'POST', body),
+  createRepair:       (body) => apiFetch('/repairs', 'POST', body),
   updateRepairStatus: (id, body) => apiFetch(`/repairs/${id}/status`, 'PATCH', body),
-  releaseRepair: (id, body) => apiFetch(`/repairs/${id}/release`, 'PATCH', body),
+  releaseRepair:      (id, body) => apiFetch(`/repairs/${id}/release`, 'PATCH', body),
+  deleteRepair:       (id, admin_password) => apiFetch(`/repairs/${id}`, 'DELETE', { admin_password }),
 
   createBorrow: (body) => apiFetch('/borrowed', 'POST', body),
   returnBorrow: (id, body) => apiFetch(`/borrowed/${id}/return`, 'PATCH', body),
-
-  deleteRepair: (id, password) => apiFetch(`/repairs/${id}`, 'DELETE', { password }),
-  deleteBorrow: (id, password) => apiFetch(`/borrowed/${id}`, 'DELETE', { password }),
+  deleteBorrow: (id, admin_password) => apiFetch(`/borrowed/${id}`, 'DELETE', { admin_password }),
 };

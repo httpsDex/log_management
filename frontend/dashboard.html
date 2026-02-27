@@ -627,6 +627,48 @@
 </style>
 
 <!-- ══════ SCRIPTS ══════ -->
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal-overlay hidden" id="deleteConfirmModal">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header" style="border-bottom-color:rgba(239,68,68,0.2);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="16" height="16" fill="none" stroke="#f87171" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </div>
+        <span class="modal-title" style="color:#f87171;">Delete Record</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('deleteConfirmModal')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="deleteConfirmAlert"></div>
+      <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:18px;">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#f87171;margin-bottom:4px;">Record to be deleted</div>
+        <div id="deleteRecordLabel" style="font-size:.85rem;color:var(--text);font-weight:500;"></div>
+      </div>
+      <p style="font-size:.8rem;color:var(--text2);margin-bottom:16px;line-height:1.5;">
+        This action is <strong style="color:var(--text);">permanent</strong> and cannot be undone.
+        Enter your admin password to confirm.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Admin Password *</label>
+        <input type="password" id="deleteAdminPassword" class="form-input"
+          placeholder="Enter your password"
+          onkeydown="if(event.key==='Enter') submitDelete()"/>
+      </div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="closeModal('deleteConfirmModal')">Cancel</button>
+        <button class="btn btn-sm" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);padding:8px 16px;font-size:.78rem;font-weight:600;" onclick="submitDelete()">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Confirm Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script src="js/utils.js"></script>

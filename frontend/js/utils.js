@@ -106,7 +106,7 @@ function animateCount(el, target, duration = 600) {
   const startTime = performance.now();
   const update = (now) => {
     const progress = Math.min((now - startTime) / duration, 1);
-    const ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+    const ease = 1 - Math.pow(1 - progress, 3);
     el.textContent = Math.round(start + (target - start) * ease);
     if (progress < 1) requestAnimationFrame(update);
   };
@@ -121,61 +121,43 @@ function animateBars() {
   });
 }
 
-// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
-// Shared across repairs and borrows history.
-// Called with type='repair'|'borrow', the record id, and a label for the subtitle.
-let _deleteTarget = null; // { type, id, reload }
+// ─── Delete Confirmation Modal ────────────────────────────────────────────────
+// type: 'repair' | 'borrow'
+// id:   record id
+// label: human-readable name shown in the modal
+let _deleteTarget = { type: null, id: null };
 
 function openDeleteConfirm(type, id, label) {
   _deleteTarget = { type, id };
-  document.getElementById('deleteConfirmSubtitle').textContent = `Deleting: ${label}`;
-  document.getElementById('deleteConfirmPassword').value = '';
+  document.getElementById('deleteRecordLabel').textContent = label;
+  document.getElementById('deleteAdminPassword').value = '';
   clearAlert('deleteConfirmAlert');
-  // Reset button state
-  const btn = document.getElementById('deleteConfirmBtn');
-  btn.disabled = false;
-  btn.textContent = '';
-  btn.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete Record`;
   openModal('deleteConfirmModal');
-  // Focus password field after animation
-  setTimeout(() => document.getElementById('deleteConfirmPassword').focus(), 120);
 }
 
-async function executeDelete() {
-  if (!_deleteTarget) return;
-  const password = document.getElementById('deleteConfirmPassword').value.trim();
+async function submitDelete() {
+  const password = document.getElementById('deleteAdminPassword').value.trim();
   if (!password) {
-    showAlert('deleteConfirmAlert', 'Please enter your password.');
+    showAlert('deleteConfirmAlert', 'Please enter your admin password.');
     return;
   }
 
-  const btn = document.getElementById('deleteConfirmBtn');
-  btn.disabled = true;
-  btn.innerHTML = 'Deleting...';
-
   const { type, id } = _deleteTarget;
-  const res = type === 'repair'
-    ? await API.deleteRepair(id, password)
-    : await API.deleteBorrow(id, password);
+  let res;
+  if (type === 'repair') {
+    res = await API.deleteRepair(id, password);
+  } else {
+    res = await API.deleteBorrow(id, password);
+  }
 
-  if (!res) { btn.disabled = false; btn.innerHTML = 'Delete Record'; return; }
+  if (!res) return;
 
   if (res.ok) {
     closeModal('deleteConfirmModal');
-    _deleteTarget = null;
-    // Reload the appropriate history
+    // Reload the appropriate history tab
     if (type === 'repair') loadRepairHistory();
-    else                   loadReturnHistory();
+    else loadReturnHistory();
   } else {
-    showAlert('deleteConfirmAlert', res.data.message || 'Failed to delete.');
-    btn.disabled = false;
-    btn.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete Record`;
+    showAlert('deleteConfirmAlert', res.data.message || 'Deletion failed.');
   }
 }
-
-// Allow pressing Enter in the password field to submit
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('deleteConfirmPassword')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') executeDelete();
-  });
-});

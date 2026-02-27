@@ -34,46 +34,7 @@ const db = mysql.createConnection({
 db.connect((err) => {
   if (err) { console.error('MySQL connection failed:', err); return; }
   console.log('MySQL connected!');
-  runMigrations();
 });
-
-// ─── Auto-run Migrations ──────────────────────────────────────────────────────
-function runMigrations() {
-  const migrations = [
-    {
-      check: `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-              WHERE TABLE_SCHEMA = DATABASE()
-                AND TABLE_NAME   = 'repairs'
-                AND COLUMN_NAME  = 'contact_number'`,
-      run:   `ALTER TABLE repairs
-              ADD COLUMN contact_number VARCHAR(255) DEFAULT NULL AFTER customer_name`,
-      label: 'repairs.contact_number',
-    },
-    {
-      check: `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-              WHERE TABLE_SCHEMA = DATABASE()
-                AND TABLE_NAME   = 'borrowed_items'
-                AND COLUMN_NAME  = 'contact_number'`,
-      run:   `ALTER TABLE borrowed_items
-              ADD COLUMN contact_number VARCHAR(255) DEFAULT NULL AFTER borrower_name`,
-      label: 'borrowed_items.contact_number',
-    },
-  ];
-
-  migrations.forEach(({ check, run, label }) => {
-    db.query(check, (err, rows) => {
-      if (err) { console.error(`Migration check failed [${label}]:`, err.message); return; }
-      if (rows.length === 0) {
-        db.query(run, (err2) => {
-          if (err2) console.error(`Migration failed [${label}]:`, err2.message);
-          else      console.log(`Migration applied: column added — ${label}`);
-        });
-      } else {
-        console.log(`Column already exists: ${label}`);
-      }
-    });
-  });
-}
 
 // ─── Promisified query ────────────────────────────────────────────────────────
 const query = (sql, params) =>
@@ -206,6 +167,26 @@ app.patch('/api/repairs/:id/release', auth, async (req, res) => {
   }
 });
 
+// ─── DELETE REPAIR (admin password required) ──────────────────────────────────
+app.delete('/api/repairs/:id', auth, async (req, res) => {
+  const { admin_password } = req.body;
+  if (!admin_password?.trim())
+    return res.status(400).json({ message: 'Admin password is required to delete a record.' });
+  try {
+    const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+    if (!rows.length) return res.status(401).json({ message: 'User not found.' });
+    const match = await bcrypt.compare(admin_password, rows[0].password);
+    if (!match) return res.status(401).json({ message: 'Incorrect password. Deletion cancelled.' });
+    const result = await query('DELETE FROM repairs WHERE id = ?', [req.params.id]);
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: 'Record not found.' });
+    res.json({ message: 'Repair record deleted successfully.' });
+  } catch (err) {
+    console.error('DELETE repair error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 // ─── BORROWED ITEMS ───────────────────────────────────────────────────────────
 
 app.get('/api/borrowed', auth, async (req, res) => {
@@ -261,6 +242,26 @@ app.patch('/api/borrowed/:id/return', auth, async (req, res) => {
     );
     res.json({ message: 'Item marked as returned.' });
   } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ─── DELETE BORROWED ITEM (admin password required) ───────────────────────────
+app.delete('/api/borrowed/:id', auth, async (req, res) => {
+  const { admin_password } = req.body;
+  if (!admin_password?.trim())
+    return res.status(400).json({ message: 'Admin password is required to delete a record.' });
+  try {
+    const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+    if (!rows.length) return res.status(401).json({ message: 'User not found.' });
+    const match = await bcrypt.compare(admin_password, rows[0].password);
+    if (!match) return res.status(401).json({ message: 'Incorrect password. Deletion cancelled.' });
+    const result = await query('DELETE FROM borrowed_items WHERE id = ?', [req.params.id]);
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: 'Record not found.' });
+    res.json({ message: 'Borrow record deleted successfully.' });
+  } catch (err) {
+    console.error('DELETE borrowed error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
