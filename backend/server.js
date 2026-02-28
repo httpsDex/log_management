@@ -45,7 +45,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error('Not allowed by CORS'));
   },
-  credentials: true,
+  credentials: false,
 }));
 
 app.use(express.json());
