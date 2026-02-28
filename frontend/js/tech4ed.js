@@ -1,47 +1,44 @@
 // ─── Tech4Ed Module ───────────────────────────────────────────────────────────
 
 let _tech4edPollTimer = null;
-let _tech4edCache = [];
+let _entriesCache  = [];   // type = 'entry'
+let _sessionsCache = [];   // type = 'session'
 
 async function loadTech4Ed() {
   clearInterval(_tech4edPollTimer);
   const res = await API.getTech4Ed();
   if (!res?.ok) return;
-  _tech4edCache = res.data;
 
-  const active   = _tech4edCache.filter(e => !e.time_out);
-  const finished = _tech4edCache.filter(e => e.time_out);
+  _entriesCache  = res.data.filter(e => e.type === 'entry');
+  _sessionsCache = res.data.filter(e => e.type === 'session');
 
-  animateCount(document.getElementById('stat-t4e-active'),  active.length);
-  animateCount(document.getElementById('stat-t4e-total'),   _tech4edCache.length);
-  animateCount(document.getElementById('stat-t4e-today'),   _tech4edCache.filter(e => {
-    const d = new Date(e.time_in);
-    return d.toDateString() === new Date().toDateString();
-  }).length);
+  const activeSessions   = _sessionsCache.filter(e => !e.time_out);
+  const finishedSessions = _sessionsCache.filter(e =>  e.time_out);
 
-  // Entries sub-tab = all records shown as simple log (no timer)
-  renderEntriesLog(_tech4edCache);
+  animateCount(document.getElementById('stat-t4e-active'),  activeSessions.length);
+  animateCount(document.getElementById('stat-t4e-entries'), _entriesCache.length);
+  animateCount(document.getElementById('stat-t4e-total'),   res.data.length);
 
-  // Time-In sub-tab = active sessions with timer + completed today
-  renderTech4EdActive(active);
-  renderTech4EdHistory(finished);
+  renderEntriesLog(_entriesCache);
+  renderTech4EdActive(activeSessions);
+  renderTech4EdHistory(finishedSessions);
 
   _tech4edPollTimer = setInterval(updateElapsedTimes, 30000);
 }
 
-function renderEntriesLog(all) {
-  document.getElementById('entriesLogBody').innerHTML = all.length === 0
-    ? emptyState('No entries yet', 6)
-    : all.map(e => `<tr>
+// ── Entries Log (type = 'entry') ──────────────────────────────────────────────
+function renderEntriesLog(entries) {
+  document.getElementById('entriesLogBody').innerHTML = entries.length === 0
+    ? emptyState('No entries yet', 4)
+    : entries.map(e => `<tr>
         <td class="td-mono">#${e.id}</td>
         <td class="td-name">${e.name}</td>
         <td><span class="badge" style="background:rgba(${genderColor(e.gender)},0.1);color:${genderHex(e.gender)};">${e.gender}</span></td>
         <td>${e.purpose}</td>
-        <td class="td-mono">${fmtDatetime(e.time_in)}</td>
-        <td class="td-mono">${e.time_out ? fmtDatetime(e.time_out) : '<span style="color:var(--success);">Active</span>'}</td>
       </tr>`).join('');
 }
 
+// ── Time-In Sessions (type = 'session') ───────────────────────────────────────
 function renderTech4EdActive(active) {
   document.getElementById('activeTech4EdBody').innerHTML = active.length === 0
     ? emptyState('No active sessions', 7)
@@ -78,8 +75,9 @@ function renderTech4EdHistory(finished) {
       }).join('');
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function genderColor(g) { return g === 'Male' ? '59,130,246' : g === 'Female' ? '168,85,247' : '245,158,11'; }
-function genderHex(g)   { return g === 'Male' ? '#60a5fa'  : g === 'Female' ? '#c084fc'    : '#fbbf24'; }
+function genderHex(g)   { return g === 'Male' ? '#60a5fa'    : g === 'Female' ? '#c084fc'    : '#fbbf24'; }
 
 function updateElapsedTimes() {
   document.querySelectorAll('.elapsed-cell[data-timein]').forEach(cell => {
@@ -126,27 +124,50 @@ function switchTech4EdSubTab(name) {
   });
 }
 
-// ── Shared entry form (same modal for both tabs) ──────────────────────────────
-document.getElementById('newTech4EdForm')?.addEventListener('submit', async (e) => {
+// ── ENTRIES LOG FORM (type = 'entry') ─────────────────────────────────────────
+document.getElementById('newEntryLogForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  clearAlert('newTech4EdAlert');
+  clearAlert('newEntryLogAlert');
   const f = e.target;
-  const body = {
-    name:    f.elements['t4e_name'].value.trim(),
-    gender:  f.elements['t4e_gender'].value,
-    purpose: f.elements['t4e_purpose'].value.trim(),
-  };
-  if (!body.name)    { showAlert('newTech4EdAlert', 'Name is required.'); return; }
-  if (!body.gender)  { showAlert('newTech4EdAlert', 'Please select gender.'); return; }
-  if (!body.purpose) { showAlert('newTech4EdAlert', 'Purpose is required.'); return; }
 
-  const res = await API.createTech4Ed(body);
+  const name    = f.elements['el_name'].value.trim();
+  const gender  = f.elements['el_gender'].value;
+  const purpose = f.elements['el_purpose'].value.trim();
+
+  if (!name)    { showAlert('newEntryLogAlert', 'Name is required.'); return; }
+  if (!gender)  { showAlert('newEntryLogAlert', 'Please select gender.'); return; }
+  if (!purpose) { showAlert('newEntryLogAlert', 'Purpose is required.'); return; }
+
+  const res = await API.createTech4EdEntry({ name, gender, purpose });
   if (!res) return;
   if (res.ok) {
     e.target.reset();
-    closeModal('newTech4EdModal');
+    closeModal('newEntryLogModal');
     loadTech4Ed();
-  } else showAlert('newTech4EdAlert', res.data.message || 'Failed to create entry.');
+  } else showAlert('newEntryLogAlert', res.data.message || 'Failed to create entry.');
+});
+
+// ── TIME-IN SESSION FORM (type = 'session') ───────────────────────────────────
+document.getElementById('newTimeInForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearAlert('newTimeInAlert');
+  const f = e.target;
+
+  const name    = f.elements['ti_name'].value.trim();
+  const gender  = f.elements['ti_gender'].value;
+  const purpose = f.elements['ti_purpose'].value.trim();
+
+  if (!name)    { showAlert('newTimeInAlert', 'Name is required.'); return; }
+  if (!gender)  { showAlert('newTimeInAlert', 'Please select gender.'); return; }
+  if (!purpose) { showAlert('newTimeInAlert', 'Purpose is required.'); return; }
+
+  const res = await API.createTech4Ed({ name, gender, purpose });
+  if (!res) return;
+  if (res.ok) {
+    e.target.reset();
+    closeModal('newTimeInModal');
+    loadTech4Ed();
+  } else showAlert('newTimeInAlert', res.data.message || 'Failed to start session.');
 });
 
 async function submitTimeout(id) {

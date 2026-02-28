@@ -222,14 +222,6 @@
             <div class="canvas-legend" style="margin-top:10px;text-align:center;"></div>
           </div>
         </div>
-        <!-- Tech4Ed gender donut -->
-        <div class="card">
-          <div class="card-header"><span class="card-title">Tech4Ed — Gender</span><span class="card-sub">Session demographics</span></div>
-          <div class="chart-canvas-wrap" style="display:flex;flex-direction:column;align-items:center;padding:20px;">
-            <canvas id="genderChartCanvas" style="max-width:180px;max-height:180px;"></canvas>
-            <div class="canvas-legend" style="margin-top:10px;text-align:center;"></div>
-          </div>
-        </div>
       </div>
     </div><!-- end tab-dashboard -->
 
@@ -356,8 +348,10 @@
     </div>
 
     <!-- ══ TAB: TECH4ED ══ -->
+    <!-- ══ TAB: TECH4ED ══ -->
     <div id="tab-tech4ed" class="tab-content">
-      <!-- Summary stats -->
+
+      <!-- Stats -->
       <div class="stats-grid stats-grid-3" style="max-width:600px;margin-bottom:16px;">
         <div class="stat-card green">
           <div class="stat-label">Active Sessions</div>
@@ -365,51 +359,57 @@
           <div class="stat-change" style="display:flex;align-items:center;gap:5px;"><span class="pulse-dot"></span> Live</div>
         </div>
         <div class="stat-card blue">
-          <div class="stat-label">Sessions Today</div>
-          <div class="stat-value" style="color:#60a5fa" id="stat-t4e-today">—</div>
-          <div class="stat-change">Today</div>
+          <div class="stat-label">Total Entries</div>
+          <div class="stat-value" style="color:#60a5fa" id="stat-t4e-entries">—</div>
+          <div class="stat-change">Entry log</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Total Sessions</div>
+          <div class="stat-label">All Records</div>
           <div class="stat-value" style="color:var(--text)" id="stat-t4e-total">—</div>
-          <div class="stat-change">All loaded</div>
+          <div class="stat-change">Combined</div>
         </div>
       </div>
 
-      <!-- Sub-tab bar -->
+      <!-- Sub-tab bar: 3 tabs -->
       <div class="subtab-bar">
         <button class="subtab-btn active" data-subtab="entries" onclick="switchTech4EdSubTab('entries')">📋 Entries Log</button>
-        <button class="subtab-btn" data-subtab="timein"  onclick="switchTech4EdSubTab('timein')">⏱ Time-In Sessions</button>
+        <button class="subtab-btn" data-subtab="active"   onclick="switchTech4EdSubTab('active')">⏱ Active Sessions</button>
+        <button class="subtab-btn" data-subtab="history"  onclick="switchTech4EdSubTab('history')">✅ Session History</button>
       </div>
 
-      <!-- Sub-tab: Entries (simple log, no timer) -->
+      <!-- ── Sub-tab: Entries Log (type='entry', no timer) ── -->
       <div id="t4e-subtab-entries" class="subtab-content active">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">All Entries</span>
-            <button class="btn btn-primary btn-sm" onclick="openModal('newTech4EdModal')">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>New Entry
+            <div>
+              <span class="card-title">Entries Log</span>
+              <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">Simple visitor log — no time tracking</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('newEntryLogModal')">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              New Entry
             </button>
           </div>
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Time In</th><th>Time Out</th></tr></thead>
-              <tbody id="entriesLogBody"><tr><td colspan="6"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+              <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th></tr></thead>
+              <tbody id="entriesLogBody"><tr><td colspan="4"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- Sub-tab: Time-In Sessions (with live timer) -->
-      <div id="t4e-subtab-timein" class="subtab-content">
+      <!-- ── Sub-tab: Active Sessions (type='session', no time_out yet) ── -->
+      <div id="t4e-subtab-active" class="subtab-content">
         <div class="card">
           <div class="card-header">
             <div style="display:flex;align-items:center;gap:8px;">
               <span class="card-title">Active Sessions</span>
               <span class="session-live"><span class="pulse-dot"></span> Live</span>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="openModal('newTech4EdModal')">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Time In
+            <button class="btn btn-primary btn-sm" onclick="openModal('newTimeInModal')">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Time In
             </button>
           </div>
           <div class="table-wrap">
@@ -419,10 +419,14 @@
             </table>
           </div>
         </div>
+      </div>
+
+      <!-- ── Sub-tab: Session History (type='session', time_out set) ── -->
+      <div id="t4e-subtab-history" class="subtab-content">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Completed Sessions Today</span>
-            <span style="font-size:.72rem;color:var(--muted);">Timed out</span>
+            <span class="card-title">Session History</span>
+            <span style="font-size:.72rem;color:var(--muted);">Completed time-in sessions</span>
           </div>
           <div class="table-wrap">
             <table class="data-table">
@@ -433,7 +437,6 @@
         </div>
       </div>
     </div><!-- end tab-tech4ed -->
-
   </div><!-- .main-inner -->
 </main>
 
@@ -605,40 +608,100 @@
   </div>
 </div>
 
-<!-- NEW TECH4ED ENTRY (shared modal for both sub-tabs) -->
-<div class="modal-overlay hidden" id="newTech4EdModal">
+<!-- ══════════════════════════════════════════════════════════
+     TECH4ED MODAL 1: Entries Log (manual — pick date & times)
+     Replace the old newTech4EdModal with these two modals
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- NEW ENTRY LOG MODAL -->
+<div class="modal-overlay hidden" id="newEntryLogModal">
   <div class="modal-box" style="max-width:440px;">
     <div class="modal-header">
       <div>
-        <span class="modal-title">Tech4Ed — New Entry</span>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:3px;">Time in will be recorded as now</div>
+        <span class="modal-title">📋 New Entry Log</span>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:3px;">Simple visitor log — no time tracking</div>
       </div>
-      <button class="modal-close" onclick="closeModal('newTech4EdModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      <button class="modal-close" onclick="closeModal('newEntryLogModal')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
     </div>
     <div class="modal-body">
-      <div id="newTech4EdAlert"></div>
-      <form id="newTech4EdForm">
+      <div id="newEntryLogAlert"></div>
+      <form id="newEntryLogForm">
         <div class="form-grid">
-          <div class="form-group span-2"><label class="form-label">Full Name *</label><input type="text" name="t4e_name" class="form-input" placeholder="Enter full name" autocomplete="off"/></div>
-          <div class="form-group"><label class="form-label">Gender *</label>
-            <select name="t4e_gender" class="form-input">
+          <div class="form-group span-2">
+            <label class="form-label">Full Name *</label>
+            <input type="text" name="el_name" class="form-input" placeholder="Enter full name" autocomplete="off"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender *</label>
+            <select name="el_gender" class="form-input">
               <option value="">Select...</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
               <option value="Other">Other</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">Purpose *</label><input type="text" name="t4e_purpose" class="form-input" placeholder="e.g. Research, Online class"/></div>
-        </div>
-        <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:var(--radius-sm);padding:10px 12px;margin-top:4px;font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:8px;">
-          <svg width="14" height="14" fill="none" stroke="#34d399" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          Time in will be recorded as <strong style="color:var(--text);margin-left:3px;">now</strong>.
+          <div class="form-group">
+            <label class="form-label">Purpose *</label>
+            <input type="text" name="el_purpose" class="form-input" placeholder="e.g. Research, Online class"/>
+          </div>
         </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-ghost" onclick="closeModal('newTech4EdModal')">Cancel</button>
+          <button type="button" class="btn btn-ghost" onclick="closeModal('newEntryLogModal')">Cancel</button>
           <button type="submit" class="btn btn-primary">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
             Save Entry
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- NEW TIME-IN SESSION MODAL -->
+<div class="modal-overlay hidden" id="newTimeInModal">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-header">
+      <div>
+        <span class="modal-title">⏱ New Time-In Session</span>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:3px;">Time in will be recorded as <strong style="color:var(--success);">now</strong></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('newTimeInModal')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="newTimeInAlert"></div>
+      <form id="newTimeInForm">
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label">Full Name *</label>
+            <input type="text" name="ti_name" class="form-input" placeholder="Enter full name" autocomplete="off"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender *</label>
+            <select name="ti_gender" class="form-input">
+              <option value="">Select...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Purpose *</label>
+            <input type="text" name="ti_purpose" class="form-input" placeholder="e.g. Research, Online class"/>
+          </div>
+        </div>
+        <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:var(--radius-sm);padding:10px 12px;margin-top:4px;font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:8px;">
+          <svg width="14" height="14" fill="none" stroke="#34d399" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          A live timer will start immediately. Use the <strong style="color:var(--text);margin:0 3px;">Time Out</strong> button when done.
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('newTimeInModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Start Session
           </button>
         </div>
       </form>

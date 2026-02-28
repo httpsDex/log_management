@@ -87,9 +87,6 @@ app.get('/api/employees', auth, async (req, res) => {
 });
 
 // ── REPAIRS ───────────────────────────────────────────────────────────────────
-// status        = 'Pending' | 'Released'      → lifecycle stage
-// repair_condition = 'Fixed' | 'Unserviceable' | NULL  → what happened to it
-
 app.get('/api/repairs', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM repairs ORDER BY created_at DESC', [])); }
   catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
@@ -127,8 +124,6 @@ app.post('/api/repairs', auth, async (req, res) => {
   }
 });
 
-// Update repair_condition (Fixed or Unserviceable) — does NOT change status
-// status stays 'Pending' until item is physically released
 app.patch('/api/repairs/:id/condition', auth, async (req, res) => {
   const { repair_condition, repaired_by, repair_comment } = req.body;
 
@@ -153,7 +148,6 @@ app.patch('/api/repairs/:id/condition', auth, async (req, res) => {
   }
 });
 
-// Release — sets status to 'Released', requires repair_condition to already be set
 app.patch('/api/repairs/:id/release', auth, async (req, res) => {
   const { claimed_by, date_claimed, released_by } = req.body;
   if (!claimed_by?.trim())  return res.status(400).json({ message: 'claimed_by is required' });
@@ -163,7 +157,6 @@ app.patch('/api/repairs/:id/release', auth, async (req, res) => {
   const now       = moment().format('YYYY-MM-DD HH:mm:ss');
 
   try {
-    // Ensure repair_condition is set before releasing
     const rows = await query('SELECT repair_condition FROM repairs WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Record not found.' });
     if (!rows[0].repair_condition)
@@ -357,10 +350,13 @@ app.delete('/api/reservations/:id', auth, async (req, res) => {
 // ── TECH4ED ───────────────────────────────────────────────────────────────────
 app.get('/api/tech4ed', auth, async (req, res) => {
   try {
+    // Return all entries + today's sessions + any session still active (no time_out)
     const rows = await query(
       `SELECT * FROM tech4ed
-       WHERE DATE(time_in) = CURDATE() OR time_out IS NULL
-       ORDER BY time_in DESC`,
+       WHERE type = 'entry'
+          OR DATE(time_in) = CURDATE()
+          OR time_out IS NULL
+       ORDER BY created_at DESC`,
       []
     );
     res.json(rows);
@@ -374,6 +370,7 @@ app.get('/api/tech4ed/all', auth, async (req, res) => {
   catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
 });
 
+// Live time-in session — type = 'session', time_in = now, no time_out
 app.post('/api/tech4ed', auth, async (req, res) => {
   const validErr = validate(['name','gender','purpose'], req.body);
   if (validErr) return res.status(400).json({ message: validErr });
@@ -385,13 +382,36 @@ app.post('/api/tech4ed', auth, async (req, res) => {
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
     const result = await query(
-      `INSERT INTO tech4ed (name, gender, purpose, time_in, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO tech4ed (name, gender, purpose, time_in, type, created_at)
+       VALUES (?, ?, ?, ?, 'session', ?)`,
       [name.trim(), gender, purpose.trim(), now, now]
     );
     res.status(201).json({ message: 'Session started', id: result.insertId });
   } catch (err) {
     console.error('INSERT tech4ed error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Simple entry log — type = 'entry', no time_out ever set
+app.post('/api/tech4ed/entry', auth, async (req, res) => {
+  const validErr = validate(['name','gender','purpose'], req.body);
+  if (validErr) return res.status(400).json({ message: validErr });
+
+  const { name, gender, purpose } = req.body;
+  if (!['Male','Female','Other'].includes(gender))
+    return res.status(400).json({ message: 'Gender must be Male, Female, or Other' });
+
+  const now = moment().format('YYYY-MM-DD HH:mm:ss');
+  try {
+    const result = await query(
+      `INSERT INTO tech4ed (name, gender, purpose, time_in, type, created_at)
+       VALUES (?, ?, ?, ?, 'entry', ?)`,
+      [name.trim(), gender, purpose.trim(), now, now]
+    );
+    res.status(201).json({ message: 'Entry logged', id: result.insertId });
+  } catch (err) {
+    console.error('INSERT tech4ed/entry error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
