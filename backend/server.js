@@ -37,6 +37,8 @@ app.use(helmet({
 const allowedOrigins = [
   'http://127.0.0.1:5500',
   'http://localhost:3000',
+  'https://httpsdex.github.io',
+  'https://log-management-3bou.onrender.com',
 ];
 app.use(cors({
   origin: (origin, callback) => {
