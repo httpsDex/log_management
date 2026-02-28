@@ -70,10 +70,10 @@ const loginLimiter = rateLimit({
 
 // ── Database connection ───────────────────────────────────────────────────────
 const db = mysql.createConnection({
-  host:     process.env.DB_HOST     || 'sql207.infinityfree.com',
-  user:     process.env.DB_USER     || 'if0_41138974',
-  password: process.env.DB_PASSWORD || 'WqNZ4VfkGc1',
-  database: process.env.DB_NAME     || 'if0_41138974_it_office_db',
+  host:     process.env.DB_HOST     || 'b7f8zlf3aixbkdc0pxce-mysql.services.clever-cloud.com',
+  user:     process.env.DB_USER     || 'ucskw2jixwh4a2ex',
+  password: process.env.DB_PASSWORD || '3Z4PZWvR70ddwPSuhcrz',
+  database: process.env.DB_NAME     || 'b7f8zlf3aixbkdc0pxce',
 });
 
 db.connect((err) => {
