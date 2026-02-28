@@ -9,7 +9,7 @@ const path        = require('path');
 const helmet      = require('helmet');
 const rateLimit   = require('express-rate-limit');
 
-Crash if JWT_SECRET is missing — never fall back to a weak default
+// Crash if JWT_SECRET is missing — never fall back to a weak default
 if (!process.env.JWT_SECRET) {
   console.error('FATAL: JWT_SECRET is not set in .env. Exiting.');
   process.exit(1);
