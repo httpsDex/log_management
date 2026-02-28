@@ -16,13 +16,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
+// Simple request logger
 const logger = (req, res, next) => {
   console.log(`${req.method} ${req.originalUrl} — ${moment().format()}`);
   next();
 };
 app.use(logger);
 
-// ── DB ────────────────────────────────────────────────────────────────────────
+// ── Database connection ───────────────────────────────────────────────────────
 const db = mysql.createConnection({
   host:     process.env.DB_HOST     || 'localhost',
   user:     process.env.DB_USER     || 'root',
@@ -35,6 +36,7 @@ db.connect((err) => {
   console.log('MySQL connected!');
 });
 
+// Promisify db.query
 const query = (sql, params) =>
   new Promise((resolve, reject) =>
     db.query(sql, params, (err, results) => err ? reject(err) : resolve(results))
@@ -52,10 +54,24 @@ const auth = (req, res, next) => {
   }
 };
 
+// Check required fields exist and are non-empty
 const validate = (fields, body) => {
   for (const f of fields)
     if (!body[f] || String(body[f]).trim() === '') return `"${f}" is required`;
   return null;
+};
+
+// Build paginated response — returns { data, total, page, limit, totalPages }
+const paginate = async (baseSQL, countSQL, params, req) => {
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+
+  const countRows = await query(countSQL, params);
+  const total     = countRows[0].total;
+  const rows      = await query(`${baseSQL} LIMIT ? OFFSET ?`, [...params, limit, offset]);
+
+  return { data: rows, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
@@ -86,8 +102,112 @@ app.get('/api/employees', auth, async (req, res) => {
   catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
 });
 
+// ── DASHBOARD STATS (single endpoint for all counts) ─────────────────────────
+// Returns aggregate counts used by the dashboard — no pagination needed
+app.get('/api/stats', auth, async (req, res) => {
+  try {
+    const [repairStats] = await query(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(status = 'Pending') AS pending,
+        SUM(status = 'Released') AS released,
+        SUM(repair_condition = 'Fixed') AS fixed,
+        SUM(repair_condition = 'Unserviceable') AS unserviceable
+      FROM repairs`, []);
+
+    const [borrowStats] = await query(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(status = 'Pending') AS pending,
+        SUM(status = 'Returned') AS returned
+      FROM borrowed_items`, []);
+
+    const [resStats] = await query(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(status = 'Active') AS active,
+        SUM(status = 'Overdue') AS overdue,
+        SUM(status = 'Returned') AS returned
+      FROM reservations`, []);
+
+    const [t4eStats] = await query(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(type = 'entry') AS entries,
+        SUM(type = 'session' AND time_out IS NULL) AS active_sessions,
+        SUM(DATE(time_in) = CURDATE()) AS today
+      FROM tech4ed`, []);
+
+    // Recent activity: last 10 across all tables
+    const recentRepairs = await query(
+      `SELECT 'repair' AS kind, id, customer_name AS name, item_name AS item, office, status, updated_at AS ts FROM repairs ORDER BY updated_at DESC LIMIT 5`, []);
+    const recentBorrows = await query(
+      `SELECT 'borrow' AS kind, id, borrower_name AS name, item_borrowed AS item, office, status, updated_at AS ts FROM borrowed_items ORDER BY updated_at DESC LIMIT 5`, []);
+    const recentRes = await query(
+      `SELECT 'reservation' AS kind, id, borrower_name AS name, item_name AS item, office, status, updated_at AS ts FROM reservations ORDER BY updated_at DESC LIMIT 5`, []);
+
+    // Office breakdown — all three tables combined
+    const officeData = await query(`
+      SELECT office, COUNT(*) AS cnt FROM (
+        SELECT office FROM repairs
+        UNION ALL SELECT office FROM borrowed_items
+        UNION ALL SELECT office FROM reservations
+      ) t GROUP BY office ORDER BY cnt DESC LIMIT 8`, []);
+
+    // Monthly trend — last 6 months
+    const monthlyRepairs = await query(`
+      SELECT DATE_FORMAT(date_received,'%Y-%m') AS month, COUNT(*) AS cnt
+      FROM repairs WHERE date_received >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+      GROUP BY month ORDER BY month`, []);
+    const monthlyBorrows = await query(`
+      SELECT DATE_FORMAT(date_borrowed,'%Y-%m') AS month, COUNT(*) AS cnt
+      FROM borrowed_items WHERE date_borrowed >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+      GROUP BY month ORDER BY month`, []);
+    const monthlyRes = await query(`
+      SELECT DATE_FORMAT(reservation_date,'%Y-%m') AS month, COUNT(*) AS cnt
+      FROM reservations WHERE reservation_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+      GROUP BY month ORDER BY month`, []);
+
+    res.json({
+      repairs:      repairStats,
+      borrows:      borrowStats,
+      reservations: resStats,
+      tech4ed:      t4eStats,
+      recent:       [...recentRepairs, ...recentBorrows, ...recentRes]
+                      .sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 12),
+      officeData,
+      monthly: { repairs: monthlyRepairs, borrows: monthlyBorrows, reservations: monthlyRes },
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 // ── REPAIRS ───────────────────────────────────────────────────────────────────
+// GET /api/repairs?status=Pending&page=1&limit=20
 app.get('/api/repairs', auth, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let baseSQL   = 'SELECT * FROM repairs';
+    let countSQL  = 'SELECT COUNT(*) AS total FROM repairs';
+    const params  = [];
+
+    if (status) {
+      baseSQL  += ' WHERE status = ?';
+      countSQL += ' WHERE status = ?';
+      params.push(status);
+    }
+    baseSQL += ' ORDER BY created_at DESC';
+
+    const result = await paginate(baseSQL, countSQL, params, req);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// GET /api/repairs/all — no pagination, used by dashboard
+app.get('/api/repairs/all', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM repairs ORDER BY created_at DESC', [])); }
   catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
 });
@@ -99,34 +219,24 @@ app.post('/api/repairs', auth, async (req, res) => {
   );
   if (validErr) return res.status(400).json({ message: validErr });
 
-  const {
-    customer_name, office, item_name, serial_specs,
-    quantity, date_received, received_by, problem_description, contact_number,
-  } = req.body;
-
+  const { customer_name, office, item_name, serial_specs, quantity, date_received, received_by, problem_description, contact_number } = req.body;
   const contactValue = contact_number ? String(contact_number).trim() || null : null;
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
 
   try {
     const result = await query(
-      `INSERT INTO repairs
-         (customer_name, contact_number, office, item_name, serial_specs,
-          quantity, date_received, received_by, problem_description,
-          repair_condition, status, created_at, updated_at)
+      `INSERT INTO repairs (customer_name, contact_number, office, item_name, serial_specs, quantity, date_received, received_by, problem_description, repair_condition, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'Pending', ?, ?)`,
-      [customer_name, contactValue, office, item_name, serial_specs || null,
-       quantity, date_received, received_by, problem_description, now, now]
+      [customer_name, contactValue, office, item_name, serial_specs || null, quantity, date_received, received_by, problem_description, now, now]
     );
     res.status(201).json({ message: 'Repair entry created', id: result.insertId });
   } catch (err) {
-    console.error('INSERT repairs error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
 app.patch('/api/repairs/:id/condition', auth, async (req, res) => {
   const { repair_condition, repaired_by, repair_comment } = req.body;
-
   if (!['Fixed', 'Unserviceable'].includes(repair_condition))
     return res.status(400).json({ message: 'repair_condition must be Fixed or Unserviceable' });
   if (!repaired_by?.trim())
@@ -135,9 +245,7 @@ app.patch('/api/repairs/:id/condition', auth, async (req, res) => {
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
     const result = await query(
-      `UPDATE repairs
-       SET repair_condition=?, repaired_by=?, repair_comment=?, updated_at=?
-       WHERE id=? AND status='Pending'`,
+      `UPDATE repairs SET repair_condition=?, repaired_by=?, repair_comment=?, updated_at=? WHERE id=? AND status='Pending'`,
       [repair_condition, repaired_by, repair_comment || null, now, req.params.id]
     );
     if (result.affectedRows === 0)
@@ -160,12 +268,10 @@ app.patch('/api/repairs/:id/release', auth, async (req, res) => {
     const rows = await query('SELECT repair_condition FROM repairs WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Record not found.' });
     if (!rows[0].repair_condition)
-      return res.status(400).json({ message: 'Cannot release: repair condition (Fixed/Unserviceable) has not been set yet.' });
+      return res.status(400).json({ message: 'Cannot release: repair condition not set yet.' });
 
     await query(
-      `UPDATE repairs
-       SET claimed_by=?, date_claimed=?, released_by=?, status='Released', updated_at=?
-       WHERE id=? AND status='Pending'`,
+      `UPDATE repairs SET claimed_by=?, date_claimed=?, released_by=?, status='Released', updated_at=? WHERE id=? AND status='Pending'`,
       [claimed_by, claimDate, released_by, now, req.params.id]
     );
     res.json({ message: 'Item released successfully.' });
@@ -177,26 +283,41 @@ app.patch('/api/repairs/:id/release', auth, async (req, res) => {
 app.delete('/api/repairs/:id', auth, async (req, res) => {
   const { admin_password } = req.body;
   if (!admin_password?.trim())
-    return res.status(400).json({ message: 'Admin password is required to delete a record.' });
+    return res.status(400).json({ message: 'Admin password required.' });
   try {
     const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
     if (!rows.length) return res.status(401).json({ message: 'User not found.' });
     const match = await bcrypt.compare(admin_password, rows[0].password);
-    if (!match) return res.status(401).json({ message: 'Incorrect password. Deletion cancelled.' });
+    if (!match) return res.status(401).json({ message: 'Incorrect password.' });
     const result = await query('DELETE FROM repairs WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: 'Record not found.' });
-    res.json({ message: 'Repair record deleted successfully.' });
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Record not found.' });
+    res.json({ message: 'Repair record deleted.' });
   } catch (err) {
-    console.error('DELETE repair error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
 // ── BORROWED ITEMS ────────────────────────────────────────────────────────────
+// GET /api/borrowed?status=Pending&page=1&limit=20
 app.get('/api/borrowed', auth, async (req, res) => {
-  try { res.json(await query('SELECT * FROM borrowed_items ORDER BY created_at DESC', [])); }
-  catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
+  try {
+    const { status } = req.query;
+    let baseSQL  = 'SELECT * FROM borrowed_items';
+    let countSQL = 'SELECT COUNT(*) AS total FROM borrowed_items';
+    const params = [];
+
+    if (status) {
+      baseSQL  += ' WHERE status = ?';
+      countSQL += ' WHERE status = ?';
+      params.push(status);
+    }
+    baseSQL += ' ORDER BY created_at DESC';
+
+    const result = await paginate(baseSQL, countSQL, params, req);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
 });
 
 app.post('/api/borrowed', auth, async (req, res) => {
@@ -206,26 +327,18 @@ app.post('/api/borrowed', auth, async (req, res) => {
   );
   if (validErr) return res.status(400).json({ message: validErr });
 
-  const {
-    borrower_name, office, item_borrowed,
-    quantity, released_by, date_borrowed, contact_number,
-  } = req.body;
-
+  const { borrower_name, office, item_borrowed, quantity, released_by, date_borrowed, contact_number } = req.body;
   const contactValue = contact_number ? String(contact_number).trim() || null : null;
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
 
   try {
     const result = await query(
-      `INSERT INTO borrowed_items
-         (borrower_name, contact_number, office, item_borrowed,
-          quantity, released_by, date_borrowed, status, created_at, updated_at)
+      `INSERT INTO borrowed_items (borrower_name, contact_number, office, item_borrowed, quantity, released_by, date_borrowed, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)`,
-      [borrower_name, contactValue, office, item_borrowed,
-       quantity, released_by, date_borrowed, now, now]
+      [borrower_name, contactValue, office, item_borrowed, quantity, released_by, date_borrowed, now, now]
     );
     res.status(201).json({ message: 'Borrow entry created', id: result.insertId });
   } catch (err) {
-    console.error('INSERT borrowed_items error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
@@ -238,9 +351,7 @@ app.patch('/api/borrowed/:id/return', auth, async (req, res) => {
   const now        = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
     await query(
-      `UPDATE borrowed_items
-       SET returned_by=?, received_by=?, return_date=?, comments=?, status='Returned', updated_at=?
-       WHERE id=? AND status='Pending'`,
+      `UPDATE borrowed_items SET returned_by=?, received_by=?, return_date=?, comments=?, status='Returned', updated_at=? WHERE id=? AND status='Pending'`,
       [returned_by, received_by, returnDate, comments || '', now, req.params.id]
     );
     res.json({ message: 'Item marked as returned.' });
@@ -252,26 +363,47 @@ app.patch('/api/borrowed/:id/return', auth, async (req, res) => {
 app.delete('/api/borrowed/:id', auth, async (req, res) => {
   const { admin_password } = req.body;
   if (!admin_password?.trim())
-    return res.status(400).json({ message: 'Admin password is required to delete a record.' });
+    return res.status(400).json({ message: 'Admin password required.' });
   try {
     const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
     if (!rows.length) return res.status(401).json({ message: 'User not found.' });
     const match = await bcrypt.compare(admin_password, rows[0].password);
-    if (!match) return res.status(401).json({ message: 'Incorrect password. Deletion cancelled.' });
+    if (!match) return res.status(401).json({ message: 'Incorrect password.' });
     const result = await query('DELETE FROM borrowed_items WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: 'Record not found.' });
-    res.json({ message: 'Borrow record deleted successfully.' });
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Record not found.' });
+    res.json({ message: 'Borrow record deleted.' });
   } catch (err) {
-    console.error('DELETE borrowed error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
 // ── RESERVATIONS ──────────────────────────────────────────────────────────────
+// GET /api/reservations?status=Active&page=1&limit=20
 app.get('/api/reservations', auth, async (req, res) => {
-  try { res.json(await query('SELECT * FROM reservations ORDER BY created_at DESC', [])); }
-  catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
+  try {
+    const { status } = req.query;
+    let baseSQL  = 'SELECT * FROM reservations';
+    let countSQL = 'SELECT COUNT(*) AS total FROM reservations';
+    const params = [];
+
+    if (status) {
+      if (status === 'Active') {
+        // Active includes both Active and Overdue
+        baseSQL  += " WHERE status IN ('Active','Overdue')";
+        countSQL += " WHERE status IN ('Active','Overdue')";
+      } else {
+        baseSQL  += ' WHERE status = ?';
+        countSQL += ' WHERE status = ?';
+        params.push(status);
+      }
+    }
+    baseSQL += ' ORDER BY created_at DESC';
+
+    const result = await paginate(baseSQL, countSQL, params, req);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
 });
 
 app.post('/api/reservations', auth, async (req, res) => {
@@ -281,10 +413,7 @@ app.post('/api/reservations', auth, async (req, res) => {
   );
   if (validErr) return res.status(400).json({ message: validErr });
 
-  const {
-    borrower_name, contact_number, office, item_name,
-    quantity, reservation_date, expected_return_date, released_by,
-  } = req.body;
+  const { borrower_name, contact_number, office, item_name, quantity, reservation_date, expected_return_date, released_by } = req.body;
 
   if (expected_return_date < reservation_date)
     return res.status(400).json({ message: 'Expected return date must be after reservation date.' });
@@ -294,17 +423,12 @@ app.post('/api/reservations', auth, async (req, res) => {
 
   try {
     const result = await query(
-      `INSERT INTO reservations
-         (borrower_name, contact_number, office, item_name, quantity,
-          reservation_date, expected_return_date, released_by,
-          status, created_at, updated_at)
+      `INSERT INTO reservations (borrower_name, contact_number, office, item_name, quantity, reservation_date, expected_return_date, released_by, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?)`,
-      [borrower_name, contactValue, office, item_name, quantity,
-       reservation_date, expected_return_date, released_by, now, now]
+      [borrower_name, contactValue, office, item_name, quantity, reservation_date, expected_return_date, released_by, now, now]
     );
     res.status(201).json({ message: 'Reservation created', id: result.insertId });
   } catch (err) {
-    console.error('INSERT reservations error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
@@ -317,9 +441,7 @@ app.patch('/api/reservations/:id/return', auth, async (req, res) => {
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
     await query(
-      `UPDATE reservations
-       SET returned_by=?, received_by=?, actual_return_date=?, comments=?, status='Returned', updated_at=?
-       WHERE id=? AND status IN ('Active','Overdue')`,
+      `UPDATE reservations SET returned_by=?, received_by=?, actual_return_date=?, comments=?, status='Returned', updated_at=? WHERE id=? AND status IN ('Active','Overdue')`,
       [returned_by, received_by, returnDate, comments || '', now, req.params.id]
     );
     res.json({ message: 'Reservation marked as returned.' });
@@ -331,46 +453,58 @@ app.patch('/api/reservations/:id/return', auth, async (req, res) => {
 app.delete('/api/reservations/:id', auth, async (req, res) => {
   const { admin_password } = req.body;
   if (!admin_password?.trim())
-    return res.status(400).json({ message: 'Admin password is required to delete a record.' });
+    return res.status(400).json({ message: 'Admin password required.' });
   try {
     const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
     if (!rows.length) return res.status(401).json({ message: 'User not found.' });
     const match = await bcrypt.compare(admin_password, rows[0].password);
-    if (!match) return res.status(401).json({ message: 'Incorrect password. Deletion cancelled.' });
+    if (!match) return res.status(401).json({ message: 'Incorrect password.' });
     const result = await query('DELETE FROM reservations WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: 'Record not found.' });
-    res.json({ message: 'Reservation deleted successfully.' });
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Record not found.' });
+    res.json({ message: 'Reservation deleted.' });
   } catch (err) {
-    console.error('DELETE reservation error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
 // ── TECH4ED ───────────────────────────────────────────────────────────────────
+// GET /api/tech4ed?type=entry|session&active=1&page=1&limit=20
 app.get('/api/tech4ed', auth, async (req, res) => {
   try {
-    // Return all entries + today's sessions + any session still active (no time_out)
-    const rows = await query(
-      `SELECT * FROM tech4ed
-       WHERE type = 'entry'
-          OR DATE(time_in) = CURDATE()
-          OR time_out IS NULL
-       ORDER BY created_at DESC`,
-      []
-    );
-    res.json(rows);
+    const { type, active } = req.query;
+    const conditions = [];
+    const params     = [];
+
+    if (type)   { conditions.push('type = ?');         params.push(type); }
+    if (active === '1') { conditions.push('time_out IS NULL AND type = ?'); params.push('session'); }
+
+    let baseSQL  = 'SELECT * FROM tech4ed';
+    let countSQL = 'SELECT COUNT(*) AS total FROM tech4ed';
+
+    if (conditions.length) {
+      const where = ' WHERE ' + conditions.join(' AND ');
+      baseSQL  += where;
+      countSQL += where;
+    }
+    baseSQL += ' ORDER BY time_in DESC';
+
+    const result = await paginate(baseSQL, countSQL, params, req);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-app.get('/api/tech4ed/all', auth, async (req, res) => {
-  try { res.json(await query('SELECT * FROM tech4ed ORDER BY time_in DESC', [])); }
-  catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
+// Active sessions only (no pagination — usually small set)
+app.get('/api/tech4ed/active', auth, async (req, res) => {
+  try {
+    res.json(await query(`SELECT * FROM tech4ed WHERE type='session' AND time_out IS NULL ORDER BY time_in DESC`, []));
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
 });
 
-// Live time-in session — type = 'session', time_in = now, no time_out
+// Live session time-in
 app.post('/api/tech4ed', auth, async (req, res) => {
   const validErr = validate(['name','gender','purpose'], req.body);
   if (validErr) return res.status(400).json({ message: validErr });
@@ -382,18 +516,16 @@ app.post('/api/tech4ed', auth, async (req, res) => {
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
     const result = await query(
-      `INSERT INTO tech4ed (name, gender, purpose, time_in, type, created_at)
-       VALUES (?, ?, ?, ?, 'session', ?)`,
+      `INSERT INTO tech4ed (name, gender, purpose, time_in, type, created_at) VALUES (?, ?, ?, ?, 'session', ?)`,
       [name.trim(), gender, purpose.trim(), now, now]
     );
     res.status(201).json({ message: 'Session started', id: result.insertId });
   } catch (err) {
-    console.error('INSERT tech4ed error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// Simple entry log — type = 'entry', no time_out ever set
+// Simple entry log (no timer)
 app.post('/api/tech4ed/entry', auth, async (req, res) => {
   const validErr = validate(['name','gender','purpose'], req.body);
   if (validErr) return res.status(400).json({ message: validErr });
@@ -405,13 +537,11 @@ app.post('/api/tech4ed/entry', auth, async (req, res) => {
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
     const result = await query(
-      `INSERT INTO tech4ed (name, gender, purpose, time_in, type, created_at)
-       VALUES (?, ?, ?, ?, 'entry', ?)`,
+      `INSERT INTO tech4ed (name, gender, purpose, time_in, type, created_at) VALUES (?, ?, ?, ?, 'entry', ?)`,
       [name.trim(), gender, purpose.trim(), now, now]
     );
     res.status(201).json({ message: 'Entry logged', id: result.insertId });
   } catch (err) {
-    console.error('INSERT tech4ed/entry error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });

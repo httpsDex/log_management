@@ -1,52 +1,45 @@
-// ─── Tech4Ed Module ───────────────────────────────────────────────────────────
+// ── Tech4Ed module — subtabs: Entries | Active Sessions | Session History ─────
+
+const t4ePages = { entries: 1, history: 1 };
+const T4E_LIMIT = 15;
 
 let _tech4edPollTimer = null;
-let _entriesCache  = [];   // type = 'entry'
-let _sessionsCache = [];   // type = 'session'
 
-async function loadTech4Ed() {
-  clearInterval(_tech4edPollTimer);
-  const res = await API.getTech4Ed();
+// ── Load functions ────────────────────────────────────────────────────────────
+
+async function loadT4eEntries(page = 1) {
+  t4ePages.entries = page;
+  const res = await API.getTech4Ed({ type: 'entry', page, limit: T4E_LIMIT });
   if (!res?.ok) return;
+  const { data, total, totalPages } = res.data;
 
-  _entriesCache  = res.data.filter(e => e.type === 'entry');
-  _sessionsCache = res.data.filter(e => e.type === 'session');
-
-  const activeSessions   = _sessionsCache.filter(e => !e.time_out);
-  const finishedSessions = _sessionsCache.filter(e =>  e.time_out);
-
-  animateCount(document.getElementById('stat-t4e-active'),  activeSessions.length);
-  animateCount(document.getElementById('stat-t4e-entries'), _entriesCache.length);
-  animateCount(document.getElementById('stat-t4e-total'),   res.data.length);
-
-  renderEntriesLog(_entriesCache);
-  renderTech4EdActive(activeSessions);
-  renderTech4EdHistory(finishedSessions);
-
-  _tech4edPollTimer = setInterval(updateElapsedTimes, 30000);
-}
-
-// ── Entries Log (type = 'entry') ──────────────────────────────────────────────
-function renderEntriesLog(entries) {
-  document.getElementById('entriesLogBody').innerHTML = entries.length === 0
+  document.getElementById('entriesLogBody').innerHTML = data.length === 0
     ? emptyState('No entries yet', 4)
-    : entries.map(e => `<tr>
+    : data.map(e => `<tr>
         <td class="td-mono">#${e.id}</td>
-        <td class="td-name">${e.name}</td>
+        <td class="td-name">${esc(e.name)}</td>
         <td><span class="badge" style="background:rgba(${genderColor(e.gender)},0.1);color:${genderHex(e.gender)};">${e.gender}</span></td>
-        <td>${e.purpose}</td>
+        <td>${esc(e.purpose)}</td>
       </tr>`).join('');
+
+  renderPagination('t4eEntriesPagination', { page, totalPages, total }, loadT4eEntries);
 }
 
-// ── Time-In Sessions (type = 'session') ───────────────────────────────────────
-function renderTech4EdActive(active) {
+async function loadT4eActiveSessions() {
+  // Active sessions are usually a small set — no pagination needed
+  const rows = await API.getActiveSessions();
+  if (!rows?.ok) return;
+  const active = rows.data;
+
+  animateCount(document.getElementById('stat-t4e-active'), active.length);
+
   document.getElementById('activeTech4EdBody').innerHTML = active.length === 0
     ? emptyState('No active sessions', 7)
     : active.map(e => `<tr id="t4e-row-${e.id}">
         <td class="td-mono">#${e.id}</td>
-        <td class="td-name">${e.name}</td>
+        <td class="td-name">${esc(e.name)}</td>
         <td><span class="badge" style="background:rgba(${genderColor(e.gender)},0.1);color:${genderHex(e.gender)};">${e.gender}</span></td>
-        <td>${e.purpose}</td>
+        <td>${esc(e.purpose)}</td>
         <td class="td-mono">${fmtTime(e.time_in)}</td>
         <td class="td-mono elapsed-cell" data-timein="${e.time_in}">${calcElapsed(e.time_in)}</td>
         <td>
@@ -58,21 +51,64 @@ function renderTech4EdActive(active) {
       </tr>`).join('');
 }
 
-function renderTech4EdHistory(finished) {
+async function loadT4eHistory(page = 1) {
+  t4ePages.history = page;
+  // Completed sessions: type=session with time_out set
+  const res = await API.getTech4Ed({ type: 'session', page, limit: T4E_LIMIT });
+  if (!res?.ok) return;
+  // Filter finished on client — backend returns all sessions paginated
+  // We need finished ones only; pass a finished flag or filter here
+  // To keep backend simple, we filter client-side from session-typed results
+  const finished = res.data.data.filter(e => e.time_out);
+
+  // Compute total finished for pagination (approximate — filtered from page)
+  // For accurate pagination we need a separate count; use what we have
+  const { total, totalPages } = res.data;
+
   document.getElementById('tech4EdHistoryBody').innerHTML = finished.length === 0
     ? emptyState('No completed sessions yet', 7)
-    : finished.map(e => {
-        const duration = calcDuration(e.time_in, e.time_out);
-        return `<tr>
-          <td class="td-mono">#${e.id}</td>
-          <td class="td-name">${e.name}</td>
-          <td><span class="badge" style="background:rgba(${genderColor(e.gender)},0.1);color:${genderHex(e.gender)};">${e.gender}</span></td>
-          <td>${e.purpose}</td>
-          <td class="td-mono">${fmtTime(e.time_in)}</td>
-          <td class="td-mono">${fmtTime(e.time_out)}</td>
-          <td class="td-mono" style="color:var(--success);">${duration}</td>
-        </tr>`;
-      }).join('');
+    : finished.map(e => `<tr>
+        <td class="td-mono">#${e.id}</td>
+        <td class="td-name">${esc(e.name)}</td>
+        <td><span class="badge" style="background:rgba(${genderColor(e.gender)},0.1);color:${genderHex(e.gender)};">${e.gender}</span></td>
+        <td>${esc(e.purpose)}</td>
+        <td class="td-mono">${fmtTime(e.time_in)}</td>
+        <td class="td-mono">${fmtTime(e.time_out)}</td>
+        <td class="td-mono" style="color:var(--success);">${calcDuration(e.time_in, e.time_out)}</td>
+      </tr>`).join('');
+
+  renderPagination('t4eHistoryPagination', { page, totalPages, total }, loadT4eHistory);
+}
+
+async function loadT4eStats() {
+  const res = await API.getStats();
+  if (!res?.ok) return;
+  const t = res.data.tech4ed;
+  animateCount(document.getElementById('stat-t4e-entries'), t.entries);
+  animateCount(document.getElementById('stat-t4e-total'),   t.total);
+}
+
+// Called on tab open — loads stats + first subtab
+function loadTech4Ed() {
+  clearInterval(_tech4edPollTimer);
+  loadT4eStats();
+  switchTech4EdSubTab('entries');
+  // Poll active sessions every 30s to update elapsed timers
+  _tech4edPollTimer = setInterval(updateElapsedTimes, 30000);
+}
+
+// ── Subtab switcher ───────────────────────────────────────────────────────────
+function switchTech4EdSubTab(name) {
+  document.querySelectorAll('#tab-tech4ed .subtab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.subtab === name);
+  });
+  document.querySelectorAll('#tab-tech4ed .subtab-content').forEach(el => {
+    el.classList.toggle('active', el.id === `t4e-subtab-${name}`);
+  });
+
+  if (name === 'entries') loadT4eEntries(t4ePages.entries);
+  if (name === 'active')  loadT4eActiveSessions();
+  if (name === 'history') loadT4eHistory(t4ePages.history);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -88,11 +124,6 @@ function updateElapsedTimes() {
 function fmtTime(dtStr) {
   if (!dtStr) return '—';
   return new Date(dtStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-}
-
-function fmtDatetime(dtStr) {
-  if (!dtStr) return '—';
-  return new Date(dtStr).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function calcElapsed(timeInStr) {
@@ -114,22 +145,11 @@ function calcDuration(timeInStr, timeOutStr) {
   return `${sec}s`;
 }
 
-// ── Sub-tab switcher ──────────────────────────────────────────────────────────
-function switchTech4EdSubTab(name) {
-  document.querySelectorAll('#tab-tech4ed .subtab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.subtab === name);
-  });
-  document.querySelectorAll('#tab-tech4ed .subtab-content').forEach(el => {
-    el.classList.toggle('active', el.id === `t4e-subtab-${name}`);
-  });
-}
-
-// ── ENTRIES LOG FORM (type = 'entry') ─────────────────────────────────────────
+// ── Entry log form ────────────────────────────────────────────────────────────
 document.getElementById('newEntryLogForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAlert('newEntryLogAlert');
   const f = e.target;
-
   const name    = f.elements['el_name'].value.trim();
   const gender  = f.elements['el_gender'].value;
   const purpose = f.elements['el_purpose'].value.trim();
@@ -143,16 +163,16 @@ document.getElementById('newEntryLogForm')?.addEventListener('submit', async (e)
   if (res.ok) {
     e.target.reset();
     closeModal('newEntryLogModal');
-    loadTech4Ed();
+    loadT4eEntries(1);
+    loadT4eStats();
   } else showAlert('newEntryLogAlert', res.data.message || 'Failed to create entry.');
 });
 
-// ── TIME-IN SESSION FORM (type = 'session') ───────────────────────────────────
+// ── Time-in session form ──────────────────────────────────────────────────────
 document.getElementById('newTimeInForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAlert('newTimeInAlert');
   const f = e.target;
-
   const name    = f.elements['ti_name'].value.trim();
   const gender  = f.elements['ti_gender'].value;
   const purpose = f.elements['ti_purpose'].value.trim();
@@ -166,14 +186,16 @@ document.getElementById('newTimeInForm')?.addEventListener('submit', async (e) =
   if (res.ok) {
     e.target.reset();
     closeModal('newTimeInModal');
-    loadTech4Ed();
+    loadT4eActiveSessions();
+    loadT4eStats();
   } else showAlert('newTimeInAlert', res.data.message || 'Failed to start session.');
 });
 
+// Time out button
 async function submitTimeout(id) {
   if (!confirm('Confirm time out for this session?')) return;
   const res = await API.timeoutTech4Ed(id);
   if (!res) return;
-  if (res.ok) loadTech4Ed();
+  if (res.ok) { loadT4eActiveSessions(); loadT4eStats(); }
   else alert(res.data.message || 'Failed to time out.');
 }

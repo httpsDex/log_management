@@ -1,4 +1,4 @@
-// ─── API Module ──────────────────────────────────────────────────────────────
+// ── API module — all fetch calls go through apiFetch ─────────────────────────
 
 const getToken = () => localStorage.getItem('token');
 
@@ -13,6 +13,8 @@ async function apiFetch(path, method = 'GET', body = null) {
   if (body) opts.body = JSON.stringify(body);
   const res  = await fetch(`${API_BASE}${path}`, opts);
   const data = await res.json();
+
+  // Auto-redirect on expired token
   if (res.status === 401) {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
@@ -22,30 +24,43 @@ async function apiFetch(path, method = 'GET', body = null) {
   return { ok: res.ok, data, status: res.status };
 }
 
+// Build query string helper
+const qs = (params) => {
+  const p = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
+  return p.length ? '?' + p.map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&') : '';
+};
+
 const API = {
+  // Lookups
   getOffices:   () => apiFetch('/offices'),
   getEmployees: () => apiFetch('/employees'),
-  getRepairs:   () => apiFetch('/repairs'),
-  getBorrowed:  () => apiFetch('/borrowed'),
 
-  createRepair:          (body) => apiFetch('/repairs', 'POST', body),
-  updateRepairCondition: (id, body) => apiFetch(`/repairs/${id}/condition`, 'PATCH', body),
-  releaseRepair:         (id, body) => apiFetch(`/repairs/${id}/release`, 'PATCH', body),
-  deleteRepair:          (id, admin_password) => apiFetch(`/repairs/${id}`, 'DELETE', { admin_password }),
+  // Dashboard stats (single endpoint)
+  getStats: () => apiFetch('/stats'),
 
-  createBorrow: (body) => apiFetch('/borrowed', 'POST', body),
-  returnBorrow: (id, body) => apiFetch(`/borrowed/${id}/return`, 'PATCH', body),
-  deleteBorrow: (id, admin_password) => apiFetch(`/borrowed/${id}`, 'DELETE', { admin_password }),
+  // Repairs — paginated; pass { status, page, limit }
+  getRepairs:            (params = {}) => apiFetch('/repairs' + qs(params)),
+  createRepair:          (body)        => apiFetch('/repairs', 'POST', body),
+  updateRepairCondition: (id, body)    => apiFetch(`/repairs/${id}/condition`, 'PATCH', body),
+  releaseRepair:         (id, body)    => apiFetch(`/repairs/${id}/release`, 'PATCH', body),
+  deleteRepair:          (id, pw)      => apiFetch(`/repairs/${id}`, 'DELETE', { admin_password: pw }),
 
-  getReservations:   () => apiFetch('/reservations'),
-  createReservation: (body) => apiFetch('/reservations', 'POST', body),
-  returnReservation: (id, body) => apiFetch(`/reservations/${id}/return`, 'PATCH', body),
-  deleteReservation: (id, admin_password) => apiFetch(`/reservations/${id}`, 'DELETE', { admin_password }),
+  // Borrows — paginated; pass { status, page, limit }
+  getBorrowed:  (params = {}) => apiFetch('/borrowed' + qs(params)),
+  createBorrow: (body)        => apiFetch('/borrowed', 'POST', body),
+  returnBorrow: (id, body)    => apiFetch(`/borrowed/${id}/return`, 'PATCH', body),
+  deleteBorrow: (id, pw)      => apiFetch(`/borrowed/${id}`, 'DELETE', { admin_password: pw }),
 
-  getTech4Ed:       () => apiFetch('/tech4ed'),
-  // Live time-in session (time_in = server now, no time_out yet)
-  createTech4Ed:    (body) => apiFetch('/tech4ed', 'POST', body),
-  // Manual entry log (caller provides time_in and optional time_out)
-  createTech4EdEntry: (body) => apiFetch('/tech4ed/entry', 'POST', body),
-  timeoutTech4Ed:   (id) => apiFetch(`/tech4ed/${id}/timeout`, 'PATCH'),
+  // Reservations — paginated; pass { status, page, limit }
+  getReservations:   (params = {}) => apiFetch('/reservations' + qs(params)),
+  createReservation: (body)        => apiFetch('/reservations', 'POST', body),
+  returnReservation: (id, body)    => apiFetch(`/reservations/${id}/return`, 'PATCH', body),
+  deleteReservation: (id, pw)      => apiFetch(`/reservations/${id}`, 'DELETE', { admin_password: pw }),
+
+  // Tech4Ed — paginated; pass { type, active, page, limit }
+  getTech4Ed:         (params = {}) => apiFetch('/tech4ed' + qs(params)),
+  getActiveSessions:  ()            => apiFetch('/tech4ed/active'),
+  createTech4Ed:      (body)        => apiFetch('/tech4ed', 'POST', body),
+  createTech4EdEntry: (body)        => apiFetch('/tech4ed/entry', 'POST', body),
+  timeoutTech4Ed:     (id)          => apiFetch(`/tech4ed/${id}/timeout`, 'PATCH'),
 };

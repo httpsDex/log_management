@@ -1,14 +1,11 @@
-// ─── Navigation Module ───────────────────────────────────────────────────────
+// ── Navigation module — handles sidebar tab switching ─────────────────────────
 
 const tabMeta = {
-  dashboard:          ['Dashboard',            'Overview of all IT office activities'],
-  repairLogs:         ['Repair Logs',          'Manage and track all repair requests'],
-  repairHistory:      ['Repair History',       'All released repair records'],
-  borrowLogs:         ['Borrow Logs',          'Manage borrowed items'],
-  returnHistory:      ['Returned Items',       'All returned item records'],
-  reservationLogs:    ['Reservations',         'Manage item reservations with date ranges'],
-  reservationHistory: ['Reservation History',  'All returned reservation records'],
-  tech4ed:            ['Tech4Ed Sessions',     'Computer use time-in / time-out tracking'],
+  dashboard:       ['Dashboard',          'Overview of all IT office activities'],
+  repairLogs:      ['Repair Logs',        'Manage and track all repair requests'],
+  borrowLogs:      ['Borrow Logs',        'Manage borrowed items'],
+  reservationLogs: ['Reservations',       'Manage item reservations'],
+  tech4ed:         ['Tech4Ed Sessions',   'Computer use time-in / time-out tracking'],
 };
 
 function switchTab(name) {
@@ -31,17 +28,15 @@ function switchTab(name) {
 
   closeSidebar();
 
-  if (name === 'dashboard')          loadDashboard();
-  if (name === 'repairLogs')         loadRepairLogs();
-  if (name === 'repairHistory')      loadRepairHistory();
-  if (name === 'borrowLogs')         loadBorrowLogs();
-  if (name === 'returnHistory')      loadReturnHistory();
-  if (name === 'reservationLogs')    loadReservations();
-  if (name === 'reservationHistory') loadReservationHistory();
-  if (name === 'tech4ed')            loadTech4Ed();
+  // Load data for the activated tab
+  if (name === 'dashboard')       loadDashboard();
+  if (name === 'repairLogs')      loadRepairLogs();
+  if (name === 'borrowLogs')      loadBorrowLogs();
+  if (name === 'reservationLogs') loadReservations();
+  if (name === 'tech4ed')         loadTech4Ed();
 }
 
-// Sidebar open/close (mobile)
+// Mobile sidebar open/close
 function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('sidebarBackdrop').classList.add('visible');
