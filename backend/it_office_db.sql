@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 28, 2026 at 11:52 AM
+-- Generation Time: Feb 28, 2026 at 01:54 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -44,13 +44,6 @@ CREATE TABLE `borrowed_items` (
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `borrowed_items`
---
-
-INSERT INTO `borrowed_items` (`id`, `borrower_name`, `contact_number`, `office`, `item_borrowed`, `quantity`, `released_by`, `date_borrowed`, `returned_by`, `received_by`, `return_date`, `comments`, `status`, `created_at`, `updated_at`) VALUES
-(2, 'Shannel Morallo', '09123456789', 'Comelec', 'extension', 2, 'OJT: Shan', '2026-02-28', 'Shannel Morallo', 'OJT: Shan', '2026-02-28', 'asdf', 'Returned', '2026-02-28 18:07:49', '2026-02-28 18:08:07');
 
 -- --------------------------------------------------------
 
@@ -128,14 +121,6 @@ CREATE TABLE `repairs` (
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `repairs`
---
-
-INSERT INTO `repairs` (`id`, `customer_name`, `contact_number`, `office`, `item_name`, `serial_specs`, `quantity`, `date_received`, `received_by`, `problem_description`, `repaired_by`, `repair_comment`, `repair_condition`, `claimed_by`, `date_claimed`, `released_by`, `status`, `created_at`, `updated_at`) VALUES
-(3, 'Maam Nutrition', '09123456789', 'RHU Nutrition', 'Printer', 'Printer Ngani', 1, '2026-02-28', 'OJT: Ariel Escobilla', 'Sira', 'OJT: Ariel Escobilla', 'Yeah', 'Fixed', 'Maam Nutrition', '2026-02-28', 'OJT: Ariel Escobilla', 'Released', '2026-02-28 18:05:55', '2026-02-28 18:06:54'),
-(4, 'Shannel Morallo', '09123456789', 'Office of the Director', 'gamot', 'tuf', 1, '2026-02-28', 'Jose Reyes', 'asdf', 'Juan dela Cruz', 'asdf', 'Unserviceable', 'shan', '2026-02-28', 'Jose Reyes', 'Released', '2026-02-28 18:50:54', '2026-02-28 18:51:11');
-
 -- --------------------------------------------------------
 
 --
@@ -161,13 +146,6 @@ CREATE TABLE `reservations` (
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `reservations`
---
-
-INSERT INTO `reservations` (`id`, `borrower_name`, `contact_number`, `office`, `item_name`, `quantity`, `reservation_date`, `expected_return_date`, `released_by`, `returned_by`, `received_by`, `actual_return_date`, `comments`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Shannel Morallo', '09123456789', 'Comelec', 'Extension', 1, '2026-02-27', '2026-02-27', 'OJT: Shan', 'Shannel Morallo', 'OJT: Shan', '2026-02-28', 'asdf', 'Returned', '2026-02-28 18:09:49', '2026-02-28 18:10:40');
-
 -- --------------------------------------------------------
 
 --
@@ -184,14 +162,6 @@ CREATE TABLE `tech4ed` (
   `time_out` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `tech4ed`
---
-
-INSERT INTO `tech4ed` (`id`, `name`, `gender`, `purpose`, `type`, `time_in`, `time_out`, `created_at`) VALUES
-(4, 'asdf', 'Female', 'asdf', 'entry', '2026-02-28 18:49:33', NULL, '2026-02-28 18:49:33'),
-(5, 'asdfasd', 'Male', 'asdfsdf', 'session', '2026-02-28 18:49:48', '2026-02-28 18:50:03', '2026-02-28 18:49:48');
 
 -- --------------------------------------------------------
 
@@ -269,7 +239,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `borrowed_items`
 --
 ALTER TABLE `borrowed_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `employees`
@@ -287,7 +257,7 @@ ALTER TABLE `offices`
 -- AUTO_INCREMENT for table `repairs`
 --
 ALTER TABLE `repairs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `reservations`
