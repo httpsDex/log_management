@@ -1,5 +1,5 @@
 -- phpMyAdmin SQL Dump
--- IT Office DB — updated schema with reservations and tech4ed
+-- IT Office DB — updated schema with repair_condition split
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -10,12 +10,9 @@ SET time_zone = "+00:00";
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
--- Database: `it_office_db`
-
 -- --------------------------------------------------------
--- Table structure for table `borrowed_items`
+-- Table: borrowed_items
 -- --------------------------------------------------------
-
 CREATE TABLE `borrowed_items` (
   `id` int(11) NOT NULL,
   `borrower_name` varchar(255) NOT NULL,
@@ -35,9 +32,8 @@ CREATE TABLE `borrowed_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
--- Table structure for table `employees`
+-- Table: employees
 -- --------------------------------------------------------
-
 CREATE TABLE `employees` (
   `id` int(11) NOT NULL,
   `full_name` varchar(255) NOT NULL,
@@ -52,9 +48,8 @@ INSERT INTO `employees` (`id`, `full_name`, `is_active`) VALUES
 (5, 'Pedro Bautista', 1);
 
 -- --------------------------------------------------------
--- Table structure for table `offices`
+-- Table: offices
 -- --------------------------------------------------------
-
 CREATE TABLE `offices` (
   `id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL
@@ -71,9 +66,10 @@ INSERT INTO `offices` (`id`, `name`) VALUES
 (7, 'Records Division');
 
 -- --------------------------------------------------------
--- Table structure for table `repairs`
+-- Table: repairs
+-- KEY CHANGE: status is now only 'Pending' | 'Released'
+--             repair_condition tracks 'Fixed' | 'Unserviceable' | NULL
 -- --------------------------------------------------------
-
 CREATE TABLE `repairs` (
   `id` int(11) NOT NULL,
   `customer_name` varchar(255) NOT NULL,
@@ -87,18 +83,18 @@ CREATE TABLE `repairs` (
   `problem_description` text NOT NULL,
   `repaired_by` varchar(255) DEFAULT NULL,
   `repair_comment` text DEFAULT NULL,
+  `repair_condition` enum('Fixed','Unserviceable') DEFAULT NULL,
   `claimed_by` varchar(255) DEFAULT NULL,
   `date_claimed` date DEFAULT NULL,
   `released_by` varchar(255) DEFAULT NULL,
-  `status` enum('Pending','Fixed','Unserviceable','Released') NOT NULL DEFAULT 'Pending',
+  `status` enum('Pending','Released') NOT NULL DEFAULT 'Pending',
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
--- Table structure for table `reservations`
+-- Table: reservations
 -- --------------------------------------------------------
-
 CREATE TABLE `reservations` (
   `id` int(11) NOT NULL,
   `borrower_name` varchar(255) NOT NULL,
@@ -119,9 +115,8 @@ CREATE TABLE `reservations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
--- Table structure for table `tech4ed`
+-- Table: tech4ed
 -- --------------------------------------------------------
-
 CREATE TABLE `tech4ed` (
   `id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
@@ -133,9 +128,8 @@ CREATE TABLE `tech4ed` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
--- Table structure for table `users`
+-- Table: users
 -- --------------------------------------------------------
-
 CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `username` varchar(100) NOT NULL,
@@ -149,7 +143,6 @@ INSERT INTO `users` (`id`, `username`, `password`) VALUES
 -- --------------------------------------------------------
 -- Indexes
 -- --------------------------------------------------------
-
 ALTER TABLE `borrowed_items` ADD PRIMARY KEY (`id`);
 ALTER TABLE `employees`      ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `full_name` (`full_name`);
 ALTER TABLE `offices`        ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `name` (`name`);
@@ -161,7 +154,6 @@ ALTER TABLE `users`          ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `username` (
 -- --------------------------------------------------------
 -- AUTO_INCREMENT
 -- --------------------------------------------------------
-
 ALTER TABLE `borrowed_items` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 ALTER TABLE `employees`      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 ALTER TABLE `offices`        MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
@@ -176,7 +168,16 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 
--- ── To add tables to an existing database (without dropping), run only: ──────
--- CREATE TABLE IF NOT EXISTS `reservations` ( ... ) ...
--- CREATE TABLE IF NOT EXISTS `tech4ed` ( ... ) ...
--- See above for full CREATE TABLE statements.
+-- ── Migration for EXISTING databases (run these if you already have data) ─────
+-- ALTER TABLE repairs
+--   CHANGE COLUMN `status`
+--     `status` enum('Pending','Released') NOT NULL DEFAULT 'Pending',
+--   ADD COLUMN `repair_condition` enum('Fixed','Unserviceable') DEFAULT NULL
+--     AFTER `repair_comment`;
+--
+-- -- Backfill repair_condition from old status values
+-- UPDATE repairs SET repair_condition = 'Fixed'         WHERE status = 'Fixed';
+-- UPDATE repairs SET repair_condition = 'Unserviceable' WHERE status = 'Unserviceable';
+-- -- Fix status: anything that was Fixed/Unserviceable but not Released → keep Pending
+-- UPDATE repairs SET status = 'Pending'  WHERE status IN ('Fixed','Unserviceable');
+-- -- Released rows stay Released, condition already set above

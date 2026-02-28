@@ -11,7 +11,6 @@ const app        = express();
 const PORT       = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -23,7 +22,7 @@ const logger = (req, res, next) => {
 };
 app.use(logger);
 
-// ─── DB Connection ────────────────────────────────────────────────────────────
+// ── DB ────────────────────────────────────────────────────────────────────────
 const db = mysql.createConnection({
   host:     process.env.DB_HOST     || 'localhost',
   user:     process.env.DB_USER     || 'root',
@@ -36,13 +35,12 @@ db.connect((err) => {
   console.log('MySQL connected!');
 });
 
-// ─── Promisified query ────────────────────────────────────────────────────────
 const query = (sql, params) =>
   new Promise((resolve, reject) =>
     db.query(sql, params, (err, results) => err ? reject(err) : resolve(results))
   );
 
-// ─── Auth Middleware ──────────────────────────────────────────────────────────
+// ── Auth middleware ───────────────────────────────────────────────────────────
 const auth = (req, res, next) => {
   const token = (req.headers['authorization'] || '').split(' ')[1];
   if (!token) return res.status(401).json({ message: 'Access token required' });
@@ -60,8 +58,7 @@ const validate = (fields, body) => {
   return null;
 };
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
-
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password)
@@ -78,8 +75,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// ─── LOOKUPS ──────────────────────────────────────────────────────────────────
-
+// ── LOOKUPS ───────────────────────────────────────────────────────────────────
 app.get('/api/offices', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM offices ORDER BY name ASC', [])); }
   catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
@@ -90,7 +86,9 @@ app.get('/api/employees', auth, async (req, res) => {
   catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
 });
 
-// ─── REPAIRS ──────────────────────────────────────────────────────────────────
+// ── REPAIRS ───────────────────────────────────────────────────────────────────
+// status        = 'Pending' | 'Released'      → lifecycle stage
+// repair_condition = 'Fixed' | 'Unserviceable' | NULL  → what happened to it
 
 app.get('/api/repairs', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM repairs ORDER BY created_at DESC', [])); }
@@ -106,20 +104,19 @@ app.post('/api/repairs', auth, async (req, res) => {
 
   const {
     customer_name, office, item_name, serial_specs,
-    quantity, date_received, received_by, problem_description,
-    contact_number,
+    quantity, date_received, received_by, problem_description, contact_number,
   } = req.body;
 
   const contactValue = contact_number ? String(contact_number).trim() || null : null;
-
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
+
   try {
     const result = await query(
       `INSERT INTO repairs
          (customer_name, contact_number, office, item_name, serial_specs,
           quantity, date_received, received_by, problem_description,
-          status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)`,
+          repair_condition, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'Pending', ?, ?)`,
       [customer_name, contactValue, office, item_name, serial_specs || null,
        quantity, date_received, received_by, problem_description, now, now]
     );
@@ -130,35 +127,52 @@ app.post('/api/repairs', auth, async (req, res) => {
   }
 });
 
-app.patch('/api/repairs/:id/status', auth, async (req, res) => {
-  const { status, repaired_by, repair_comment } = req.body;
-  if (!['Fixed','Unserviceable'].includes(status))
-    return res.status(400).json({ message: 'Status must be Fixed or Unserviceable' });
+// Update repair_condition (Fixed or Unserviceable) — does NOT change status
+// status stays 'Pending' until item is physically released
+app.patch('/api/repairs/:id/condition', auth, async (req, res) => {
+  const { repair_condition, repaired_by, repair_comment } = req.body;
+
+  if (!['Fixed', 'Unserviceable'].includes(repair_condition))
+    return res.status(400).json({ message: 'repair_condition must be Fixed or Unserviceable' });
   if (!repaired_by?.trim())
     return res.status(400).json({ message: 'repaired_by is required' });
+
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
   try {
-    await query(
-      `UPDATE repairs SET status=?, repaired_by=?, repair_comment=?, updated_at=?
+    const result = await query(
+      `UPDATE repairs
+       SET repair_condition=?, repaired_by=?, repair_comment=?, updated_at=?
        WHERE id=? AND status='Pending'`,
-      [status, repaired_by, repair_comment || null, now, req.params.id]
+      [repair_condition, repaired_by, repair_comment || null, now, req.params.id]
     );
-    res.json({ message: `Status updated to ${status}` });
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: 'Record not found or already released.' });
+    res.json({ message: `Condition updated to ${repair_condition}` });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
+// Release — sets status to 'Released', requires repair_condition to already be set
 app.patch('/api/repairs/:id/release', auth, async (req, res) => {
   const { claimed_by, date_claimed, released_by } = req.body;
   if (!claimed_by?.trim())  return res.status(400).json({ message: 'claimed_by is required' });
   if (!released_by?.trim()) return res.status(400).json({ message: 'released_by is required' });
+
   const claimDate = date_claimed || moment().format('YYYY-MM-DD');
   const now       = moment().format('YYYY-MM-DD HH:mm:ss');
+
   try {
+    // Ensure repair_condition is set before releasing
+    const rows = await query('SELECT repair_condition FROM repairs WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ message: 'Record not found.' });
+    if (!rows[0].repair_condition)
+      return res.status(400).json({ message: 'Cannot release: repair condition (Fixed/Unserviceable) has not been set yet.' });
+
     await query(
-      `UPDATE repairs SET claimed_by=?, date_claimed=?, released_by=?, status='Released', updated_at=?
-       WHERE id=? AND status IN ('Fixed','Unserviceable')`,
+      `UPDATE repairs
+       SET claimed_by=?, date_claimed=?, released_by=?, status='Released', updated_at=?
+       WHERE id=? AND status='Pending'`,
       [claimed_by, claimDate, released_by, now, req.params.id]
     );
     res.json({ message: 'Item released successfully.' });
@@ -186,8 +200,7 @@ app.delete('/api/repairs/:id', auth, async (req, res) => {
   }
 });
 
-// ─── BORROWED ITEMS ───────────────────────────────────────────────────────────
-
+// ── BORROWED ITEMS ────────────────────────────────────────────────────────────
 app.get('/api/borrowed', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM borrowed_items ORDER BY created_at DESC', [])); }
   catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
@@ -202,19 +215,17 @@ app.post('/api/borrowed', auth, async (req, res) => {
 
   const {
     borrower_name, office, item_borrowed,
-    quantity, released_by, date_borrowed,
-    contact_number,
+    quantity, released_by, date_borrowed, contact_number,
   } = req.body;
 
   const contactValue = contact_number ? String(contact_number).trim() || null : null;
-
   const now = moment().format('YYYY-MM-DD HH:mm:ss');
+
   try {
     const result = await query(
       `INSERT INTO borrowed_items
          (borrower_name, contact_number, office, item_borrowed,
-          quantity, released_by, date_borrowed,
-          status, created_at, updated_at)
+          quantity, released_by, date_borrowed, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)`,
       [borrower_name, contactValue, office, item_borrowed,
        quantity, released_by, date_borrowed, now, now]
@@ -264,8 +275,7 @@ app.delete('/api/borrowed/:id', auth, async (req, res) => {
   }
 });
 
-// ─── RESERVATIONS ─────────────────────────────────────────────────────────────
-
+// ── RESERVATIONS ──────────────────────────────────────────────────────────────
 app.get('/api/reservations', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM reservations ORDER BY created_at DESC', [])); }
   catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
@@ -344,11 +354,9 @@ app.delete('/api/reservations/:id', auth, async (req, res) => {
   }
 });
 
-// ─── TECH4ED ──────────────────────────────────────────────────────────────────
-
+// ── TECH4ED ───────────────────────────────────────────────────────────────────
 app.get('/api/tech4ed', auth, async (req, res) => {
   try {
-    // Return today's sessions + all active (no time_out) from previous days
     const rows = await query(
       `SELECT * FROM tech4ed
        WHERE DATE(time_in) = CURDATE() OR time_out IS NULL
@@ -403,5 +411,5 @@ app.patch('/api/tech4ed/:id/timeout', auth, async (req, res) => {
   }
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => console.log(`IT Office Server running on http://localhost:${PORT}`));

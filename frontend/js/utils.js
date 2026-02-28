@@ -1,5 +1,6 @@
 // ─── Utility Functions ───────────────────────────────────────────────────────
 
+// Single badge by status/condition name
 function badge(status) {
   const map = {
     Pending:       'badge-pending',
@@ -13,11 +14,17 @@ function badge(status) {
   return `<span class="badge ${map[status] || ''}">${status}</span>`;
 }
 
+// Two badges side by side: lifecycle status + repair condition (for repairs only)
+// repairCondition is null when item is still pending evaluation
+function repairBadges(status, repairCondition) {
+  const statusBadge    = badge(status);
+  const conditionBadge = repairCondition ? badge(repairCondition) : '';
+  return `<div style="display:flex;flex-direction:column;gap:4px;">${statusBadge}${conditionBadge}</div>`;
+}
+
 function fmtDate(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-PH', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
+  return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function today() {
@@ -28,12 +35,11 @@ function timeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
+  if (mins < 1)  return 'just now';
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  if (hrs < 24)  return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 function emptyState(message, colspan) {
@@ -48,7 +54,6 @@ function emptyState(message, colspan) {
   </td></tr>`;
 }
 
-// ─── Alert helpers ────────────────────────────────────────────────────────────
 function showAlert(id, msg, type = 'error') {
   const el = document.getElementById(id);
   if (!el) return;
@@ -62,17 +67,13 @@ function clearAlert(id) {
   el.textContent = '';
 }
 
-// ─── Modal helpers ────────────────────────────────────────────────────────────
 function openModal(id)  { document.getElementById(id)?.classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
 
 document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal-overlay')) {
-    e.target.classList.add('hidden');
-  }
+  if (e.target.classList.contains('modal-overlay')) e.target.classList.add('hidden');
 });
 
-// ─── Dropdown helpers ─────────────────────────────────────────────────────────
 function toggleOtherInput(selectEl, otherInputId) {
   const input = document.getElementById(otherInputId);
   if (!input) return;
@@ -100,7 +101,6 @@ function resolveSelectValue(selectEl, otherInputId, otherPrefix, ojtInputId) {
   return val;
 }
 
-// ─── Number counter animation ─────────────────────────────────────────────────
 function animateCount(el, target, duration = 600) {
   const start = parseInt(el.textContent) || 0;
   if (start === target) return;
@@ -114,7 +114,6 @@ function animateCount(el, target, duration = 600) {
   requestAnimationFrame(update);
 }
 
-// ─── Bar chart animation ──────────────────────────────────────────────────────
 function animateBars() {
   document.querySelectorAll('.bar-fill[data-width]').forEach(bar => {
     const w = bar.dataset.width;
@@ -122,8 +121,7 @@ function animateBars() {
   });
 }
 
-// ─── Delete Confirmation Modal ────────────────────────────────────────────────
-// type: 'repair' | 'borrow' | 'reservation'
+// Delete confirmation
 let _deleteTarget = { type: null, id: null };
 
 function openDeleteConfirm(type, id, label) {
@@ -136,10 +134,7 @@ function openDeleteConfirm(type, id, label) {
 
 async function submitDelete() {
   const password = document.getElementById('deleteAdminPassword').value.trim();
-  if (!password) {
-    showAlert('deleteConfirmAlert', 'Please enter your admin password.');
-    return;
-  }
+  if (!password) { showAlert('deleteConfirmAlert', 'Please enter your admin password.'); return; }
 
   const { type, id } = _deleteTarget;
   let res;
@@ -148,7 +143,6 @@ async function submitDelete() {
   else                        res = await API.deleteReservation(id, password);
 
   if (!res) return;
-
   if (res.ok) {
     closeModal('deleteConfirmModal');
     if (type === 'repair')      loadRepairHistory();

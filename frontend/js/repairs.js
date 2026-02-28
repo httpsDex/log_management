@@ -5,11 +5,13 @@ async function loadRepairLogs() {
   if (!res?.ok) return;
   const all = res.data;
 
+  // Stats: lifecycle uses r.status, condition uses r.repair_condition
   animateCount(document.getElementById('stat-pending'),       all.filter(r => r.status === 'Pending').length);
-  animateCount(document.getElementById('stat-fixed'),         all.filter(r => r.status === 'Fixed').length);
-  animateCount(document.getElementById('stat-unserviceable'), all.filter(r => r.status === 'Unserviceable').length);
+  animateCount(document.getElementById('stat-fixed'),         all.filter(r => r.repair_condition === 'Fixed').length);
+  animateCount(document.getElementById('stat-unserviceable'), all.filter(r => r.repair_condition === 'Unserviceable').length);
   animateCount(document.getElementById('stat-released'),      all.filter(r => r.status === 'Released').length);
 
+  // Pending table: items not yet released
   const pending = all.filter(r => r.status === 'Pending');
   document.getElementById('pendingRepairsBody').innerHTML = pending.length === 0
     ? emptyState('No pending repairs', 11)
@@ -23,14 +25,15 @@ async function loadRepairLogs() {
         <td class="td-truncate" title="${r.problem_description}">${r.problem_description}</td>
         <td>${r.received_by}</td>
         <td class="td-mono">${fmtDate(r.date_received)}</td>
-        <td>${badge(r.status)}</td>
+        <td>${repairBadges(r.status, r.repair_condition)}</td>
         <td><button class="btn btn-warn btn-sm" onclick="openUpdateStatus(${r.id})">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           Update
         </button></td>
       </tr>`).join('');
 
-  const ready = all.filter(r => r.status === 'Fixed' || r.status === 'Unserviceable');
+  // Ready for release = condition is set (Fixed or Unserviceable) but not yet Released
+  const ready = all.filter(r => r.status === 'Pending' && r.repair_condition);
   document.getElementById('releaseBody').innerHTML = ready.length === 0
     ? emptyState('No items ready for release', 8)
     : ready.map(r => `<tr>
@@ -40,7 +43,7 @@ async function loadRepairLogs() {
         <td>${r.item_name}</td>
         <td>${r.repaired_by || '—'}</td>
         <td class="td-truncate" title="${r.repair_comment || ''}">${r.repair_comment || '—'}</td>
-        <td>${badge(r.status)}</td>
+        <td>${repairBadges(r.status, r.repair_condition)}</td>
         <td><button class="btn btn-success btn-sm" onclick="openRelease(${r.id})">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           Release
@@ -48,7 +51,6 @@ async function loadRepairLogs() {
       </tr>`).join('');
 }
 
-// Store fetched records for detail lookup without re-fetching
 let _repairHistoryCache = [];
 
 async function loadRepairHistory() {
@@ -68,7 +70,7 @@ async function loadRepairHistory() {
         <td>${r.claimed_by || '—'}</td>
         <td>${r.released_by || '—'}</td>
         <td class="td-mono">${fmtDate(r.date_claimed)}</td>
-        <td>${badge(r.status)}</td>
+        <td>${repairBadges(r.status, r.repair_condition)}</td>
         <td style="display:flex;gap:6px;">
           <button class="btn btn-info btn-sm" onclick="openRepairDetail(${r.id})">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -87,91 +89,47 @@ function openRepairDetail(id) {
   if (!r) return;
 
   document.getElementById('rdm-title').textContent = `Repair #${r.id} — ${r.item_name}`;
-  document.getElementById('rdm-badge').innerHTML = badge(r.status);
+  document.getElementById('rdm-badge').innerHTML = repairBadges(r.status, r.repair_condition);
 
   document.getElementById('rdm-body').innerHTML = `
     <div class="detail-section">
       <div class="detail-section-title">Customer Information</div>
       <div class="detail-grid-2">
-        <div class="detail-field">
-          <span class="detail-label">Customer Name</span>
-          <span class="detail-value">${r.customer_name}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-label">Office</span>
-          <span class="detail-value">${r.office}</span>
-        </div>
-        <div class="detail-field detail-span-2">
-          <span class="detail-label">Contact Number</span>
-          <span class="detail-value">${r.contact_number || '<span style="color:var(--muted);">Not provided</span>'}</span>
-        </div>
+        <div class="detail-field"><span class="detail-label">Customer Name</span><span class="detail-value">${r.customer_name}</span></div>
+        <div class="detail-field"><span class="detail-label">Office</span><span class="detail-value">${r.office}</span></div>
+        <div class="detail-field detail-span-2"><span class="detail-label">Contact Number</span><span class="detail-value">${r.contact_number || '<span style="color:var(--muted);">Not provided</span>'}</span></div>
       </div>
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Item Details</div>
       <div class="detail-grid-2">
-        <div class="detail-field">
-          <span class="detail-label">Item Name</span>
-          <span class="detail-value">${r.item_name}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-label">Model / Specs</span>
-          <span class="detail-value mono">${r.serial_specs || '—'}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-label">Quantity</span>
-          <span class="detail-value">${r.quantity}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-label">Date Received</span>
-          <span class="detail-value mono">${fmtDate(r.date_received)}</span>
-        </div>
-        <div class="detail-field detail-span-2">
-          <span class="detail-label">Problem Description</span>
-          <span class="detail-value long">${r.problem_description}</span>
-        </div>
+        <div class="detail-field"><span class="detail-label">Item Name</span><span class="detail-value">${r.item_name}</span></div>
+        <div class="detail-field"><span class="detail-label">Model / Specs</span><span class="detail-value mono">${r.serial_specs || '—'}</span></div>
+        <div class="detail-field"><span class="detail-label">Quantity</span><span class="detail-value">${r.quantity}</span></div>
+        <div class="detail-field"><span class="detail-label">Date Received</span><span class="detail-value mono">${fmtDate(r.date_received)}</span></div>
+        <div class="detail-field detail-span-2"><span class="detail-label">Problem Description</span><span class="detail-value long">${r.problem_description}</span></div>
       </div>
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Repair Information</div>
       <div class="detail-grid-2">
-        <div class="detail-field">
-          <span class="detail-label">Received By</span>
-          <span class="detail-value">${r.received_by}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-label">Repaired By</span>
-          <span class="detail-value">${r.repaired_by || '—'}</span>
-        </div>
-        ${r.repair_comment ? `
-        <div class="detail-field detail-span-2">
-          <span class="detail-label">Repair Notes</span>
-          <span class="detail-value long">${r.repair_comment}</span>
-        </div>` : ''}
+        <div class="detail-field"><span class="detail-label">Received By</span><span class="detail-value">${r.received_by}</span></div>
+        <div class="detail-field"><span class="detail-label">Repaired By</span><span class="detail-value">${r.repaired_by || '—'}</span></div>
+        <div class="detail-field"><span class="detail-label">Condition</span><span class="detail-value">${r.repair_condition ? badge(r.repair_condition) : '<span style="color:var(--muted);">Not yet assessed</span>'}</span></div>
+        ${r.repair_comment ? `<div class="detail-field detail-span-2"><span class="detail-label">Repair Notes</span><span class="detail-value long">${r.repair_comment}</span></div>` : ''}
       </div>
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Release Information</div>
       <div class="detail-grid-2">
-        <div class="detail-field">
-          <span class="detail-label">Claimed By</span>
-          <span class="detail-value">${r.claimed_by || '—'}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-label">Released By</span>
-          <span class="detail-value">${r.released_by || '—'}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-label">Date Claimed</span>
-          <span class="detail-value mono">${fmtDate(r.date_claimed)}</span>
-        </div>
+        <div class="detail-field"><span class="detail-label">Claimed By</span><span class="detail-value">${r.claimed_by || '—'}</span></div>
+        <div class="detail-field"><span class="detail-label">Released By</span><span class="detail-value">${r.released_by || '—'}</span></div>
+        <div class="detail-field"><span class="detail-label">Date Claimed</span><span class="detail-value mono">${fmtDate(r.date_claimed)}</span></div>
       </div>
-    </div>
-  `;
+    </div>`;
   openModal('repairDetailModal');
 }
 
-// ─── Update Status Modal ──────────────────────────────────────────────────────
 function openUpdateStatus(id) {
   document.getElementById('updateRepairId').value = id;
   document.getElementById('updateStatus').value   = 'Fixed';
@@ -184,23 +142,19 @@ function openUpdateStatus(id) {
 }
 
 async function submitUpdateStatus() {
-  const id          = document.getElementById('updateRepairId').value;
-  const status      = document.getElementById('updateStatus').value;
+  const id             = document.getElementById('updateRepairId').value;
+  const repair_condition = document.getElementById('updateStatus').value;
   const repair_comment = document.getElementById('repairComment').value.trim();
-  const repaired_by = resolveSelectValue(
+  const repaired_by    = resolveSelectValue(
     document.getElementById('updateRepairedBySelect'), 'updateRepairedByOjt', '', 'updateRepairedByOjt'
   );
-  if (!repaired_by) {
-    showAlert('updateStatusAlert', 'Please select or enter who repaired the item.');
-    return;
-  }
-  const res = await API.updateRepairStatus(id, { status, repaired_by, repair_comment });
+  if (!repaired_by) { showAlert('updateStatusAlert', 'Please select or enter who repaired the item.'); return; }
+  const res = await API.updateRepairCondition(id, { repair_condition, repaired_by, repair_comment });
   if (!res) return;
   if (res.ok) { closeModal('updateStatusModal'); loadRepairLogs(); }
   else showAlert('updateStatusAlert', res.data.message || 'Failed to update.');
 }
 
-// ─── Release Modal ────────────────────────────────────────────────────────────
 function openRelease(id) {
   document.getElementById('releaseRepairId').value = id;
   document.getElementById('claimedBy').value       = '';
@@ -221,14 +175,12 @@ async function submitRelease() {
   );
   if (!claimed_by)  { showAlert('releaseAlert', 'Please enter who is claiming the item.'); return; }
   if (!released_by) { showAlert('releaseAlert', 'Please select who is releasing the item.'); return; }
-
   const res = await API.releaseRepair(id, { claimed_by, date_claimed, released_by });
   if (!res) return;
   if (res.ok) { closeModal('releaseModal'); loadRepairLogs(); }
   else showAlert('releaseAlert', res.data.message || 'Failed to release.');
 }
 
-// ─── New Repair Form ──────────────────────────────────────────────────────────
 document.getElementById('newRepairForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAlert('newRepairAlert');

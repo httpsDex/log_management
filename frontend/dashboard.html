@@ -6,53 +6,31 @@
   <title>IT Office — Dashboard</title>
   <link rel="stylesheet" href="css/main.css"/>
   <style>
-    /* ── Badge extras for new statuses ── */
-    .badge-active   { background: rgba(16,185,129,0.1);  color: #34d399; }
-    .badge-overdue  { background: rgba(239,68,68,0.1);   color: #f87171; }
-
-    /* ── Tech4Ed live timer glow ── */
-    .session-live {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: .68rem; color: var(--success); font-weight: 600;
-    }
-
-    /* ── Reservation date range display ── */
-    .date-range {
-      display: flex; align-items: center; gap: 6px;
-      font-family: 'DM Mono', monospace; font-size: .72rem; color: var(--text2);
-    }
-    .date-range .arrow { color: var(--muted); }
-
-    /* ── Tech4Ed session card in active table ── */
-    .timer-badge {
-      font-family: 'DM Mono', monospace;
-      font-size: .72rem;
-      background: rgba(16,185,129,0.08);
-      color: #34d399;
-      border: 1px solid rgba(16,185,129,0.2);
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
+    .detail-section { margin-bottom: 20px; }
+    .detail-section:last-child { margin-bottom: 0; }
+    .detail-section-title { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .detail-field { display: flex; flex-direction: column; gap: 3px; }
+    .detail-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .detail-value { font-size: 0.85rem; color: var(--text); font-weight: 500; word-break: break-word; }
+    .detail-value.mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text2); }
+    .detail-value.long { font-size: 0.82rem; line-height: 1.5; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 2px; }
+    .detail-span-2 { grid-column: span 2; }
   </style>
 </head>
 <body>
 
-<!-- Backdrop -->
 <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
 
 <!-- ══════ SIDEBAR ══════ -->
 <aside class="sidebar" id="sidebar">
-  <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">
+  <button class="sidebar-close-btn" onclick="closeSidebar()">
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
   </button>
-
   <div class="sidebar-logo">
     <div style="display:flex;align-items:center;gap:11px;">
       <div class="logo-badge">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
-        </svg>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
       </div>
       <div>
         <div class="logo-title">IT Office</div>
@@ -118,9 +96,7 @@
       <div class="user-badge" id="userInitial">A</div>
       <div>
         <div style="font-size:.78rem;font-weight:600;color:white;" id="sidebarUsername">Admin</div>
-        <div style="font-size:.62rem;color:var(--muted);display:flex;align-items:center;gap:5px;">
-          <span class="pulse-dot"></span> Online
-        </div>
+        <div style="font-size:.62rem;color:var(--muted);display:flex;align-items:center;gap:5px;"><span class="pulse-dot"></span> Online</div>
       </div>
     </div>
     <button class="btn-logout" onclick="logout()">
@@ -147,74 +123,55 @@
 
     <!-- ══ TAB: DASHBOARD ══ -->
     <div id="tab-dashboard" class="tab-content active">
+      <!-- Row 1: Main stats -->
       <div class="stats-grid">
         <div class="stat-card blue">
-          <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:#60a5fa;">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          </div>
+          <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:#60a5fa;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
           <div class="stat-label">Total Repairs</div>
           <div class="stat-value" style="color:#60a5fa;" id="ds-total-repairs">—</div>
           <div class="stat-change">All time</div>
         </div>
         <div class="stat-card amber">
-          <div class="stat-icon" style="background:rgba(245,158,11,0.12);color:#fbbf24;">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
+          <div class="stat-icon" style="background:rgba(245,158,11,0.12);color:#fbbf24;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
           <div class="stat-label">Pending Repairs</div>
           <div class="stat-value" style="color:#fbbf24;" id="ds-pending-repairs">—</div>
           <div class="stat-change">Awaiting service</div>
         </div>
         <div class="stat-card green">
-          <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:#34d399;">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-          </div>
+          <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:#34d399;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></div>
           <div class="stat-label">Total Borrowed</div>
           <div class="stat-value" style="color:#34d399;" id="ds-total-borrowed">—</div>
           <div class="stat-change">All time</div>
         </div>
         <div class="stat-card purple">
-          <div class="stat-icon" style="background:rgba(168,85,247,0.12);color:#c084fc;">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-          </div>
+          <div class="stat-icon" style="background:rgba(168,85,247,0.12);color:#c084fc;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></div>
           <div class="stat-label">Pending Returns</div>
           <div class="stat-value" style="color:#c084fc;" id="ds-pending-borrows">—</div>
           <div class="stat-change">Awaiting return</div>
         </div>
       </div>
 
+      <!-- Row 2: Secondary stats -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;">
-        <div class="stat-card green" style="padding:14px 18px;">
-          <div class="stat-label">Items Released</div>
-          <div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-released">—</div>
-        </div>
-        <div class="stat-card blue" style="padding:14px 18px;">
-          <div class="stat-label">Items Returned</div>
-          <div class="stat-value" style="color:#60a5fa;font-size:1.5rem;" id="ds-returned">—</div>
-        </div>
-        <div class="stat-card" style="padding:14px 18px;--card-glow:rgba(59,130,246,0.1);">
-          <div class="stat-label">Active Reservations</div>
-          <div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-reservations">—</div>
-        </div>
-        <div class="stat-card" style="padding:14px 18px;--card-glow:rgba(16,185,129,0.1);">
-          <div class="stat-label">Tech4Ed Today</div>
-          <div class="stat-value" style="color:#818cf8;font-size:1.5rem;" id="ds-tech4ed">—</div>
-        </div>
+        <div class="stat-card green" style="padding:14px 18px;"><div class="stat-label">Items Released</div><div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-released">—</div></div>
+        <div class="stat-card blue"  style="padding:14px 18px;"><div class="stat-label">Items Returned</div><div class="stat-value" style="color:#60a5fa;font-size:1.5rem;" id="ds-returned">—</div></div>
+        <div class="stat-card"       style="padding:14px 18px;"><div class="stat-label">Active Reservations</div><div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-reservations">—</div></div>
+        <div class="stat-card"       style="padding:14px 18px;"><div class="stat-label">Tech4Ed Today</div><div class="stat-value" style="color:#818cf8;font-size:1.5rem;" id="ds-tech4ed">—</div></div>
       </div>
 
+      <!-- Row 3: Main chart row -->
       <div class="dashboard-grid">
         <div class="card">
           <div class="card-header">
             <span class="card-title">Recent Activity</span>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span class="pulse-dot"></span>
-              <span style="font-size:.68rem;color:var(--muted);">Live</span>
-            </div>
+            <div style="display:flex;align-items:center;gap:6px;"><span class="pulse-dot"></span><span style="font-size:.68rem;color:var(--muted);">Live</span></div>
           </div>
           <ul class="activity-feed" id="activity-feed">
             <li style="padding:40px;text-align:center;color:var(--muted);font-size:.8rem;">Loading...</li>
           </ul>
         </div>
         <div>
+          <!-- Repair Status Donut -->
           <div class="card" style="margin-bottom:16px;">
             <div class="card-header"><span class="card-title">Repair Status</span></div>
             <div class="ring-container">
@@ -231,26 +188,59 @@
               <ul class="legend" id="donut-legend"></ul>
             </div>
           </div>
+          <!-- By Office bar -->
           <div class="card">
-            <div class="card-header">
-              <span class="card-title">By Office</span>
-              <span class="card-sub">Requests</span>
-            </div>
-            <div class="bar-chart" id="office-bars">
-              <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:20px;">Loading...</div>
-            </div>
+            <div class="card-header"><span class="card-title">By Office</span><span class="card-sub">All requests</span></div>
+            <div class="bar-chart" id="office-bars"><div style="text-align:center;color:var(--muted);font-size:.8rem;padding:20px;">Loading...</div></div>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Row 4: Additional charts -->
+      <div class="charts-grid" style="margin-top:16px;">
+        <!-- Monthly Trend grouped bar -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Monthly Trend</span><span class="card-sub">Last 6 months</span></div>
+          <div class="chart-canvas-wrap">
+            <canvas id="monthlyTrendCanvas"></canvas>
+            <div class="canvas-legend" style="margin-top:8px;"></div>
+          </div>
+        </div>
+        <!-- Repair breakdown bar -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Repair Outcome</span><span class="card-sub">By result type</span></div>
+          <div class="bar-chart" id="repair-type-bars"><div style="text-align:center;color:var(--muted);font-size:.8rem;padding:20px;">Loading...</div></div>
+        </div>
+      </div>
+
+      <div class="charts-grid" style="margin-top:16px;">
+        <!-- Borrow status donut -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Borrow Status</span><span class="card-sub">Pending vs Returned</span></div>
+          <div class="chart-canvas-wrap" style="display:flex;flex-direction:column;align-items:center;padding:20px;">
+            <canvas id="borrowStatusCanvas" style="max-width:180px;max-height:180px;"></canvas>
+            <div class="canvas-legend" style="margin-top:10px;text-align:center;"></div>
+          </div>
+        </div>
+        <!-- Tech4Ed gender donut -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Tech4Ed — Gender</span><span class="card-sub">Session demographics</span></div>
+          <div class="chart-canvas-wrap" style="display:flex;flex-direction:column;align-items:center;padding:20px;">
+            <canvas id="genderChartCanvas" style="max-width:180px;max-height:180px;"></canvas>
+            <div class="canvas-legend" style="margin-top:10px;text-align:center;"></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- end tab-dashboard -->
 
     <!-- ══ TAB: REPAIR LOGS ══ -->
     <div id="tab-repairLogs" class="tab-content">
+      <!-- 4 separate stat cards: Pending | Fixed | Unserviceable | Released -->
       <div class="stats-grid">
-        <div class="stat-card amber"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--warn)" id="stat-pending">—</div></div>
-        <div class="stat-card green"><div class="stat-label">Fixed</div><div class="stat-value" style="color:var(--success)" id="stat-fixed">—</div></div>
-        <div class="stat-card red"><div class="stat-label">Unserviceable</div><div class="stat-value" style="color:var(--danger)" id="stat-unserviceable">—</div></div>
-        <div class="stat-card"><div class="stat-label">Released</div><div class="stat-value" style="color:var(--info)" id="stat-released">—</div></div>
+        <div class="stat-card amber"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--warn)"    id="stat-pending">—</div></div>
+        <div class="stat-card green"><div class="stat-label">Fixed</div><div class="stat-value" style="color:var(--success)"  id="stat-fixed">—</div></div>
+        <div class="stat-card red">  <div class="stat-label">Unserviceable</div><div class="stat-value" style="color:var(--danger)"  id="stat-unserviceable">—</div></div>
+        <div class="stat-card">      <div class="stat-label">Released</div><div class="stat-value" style="color:var(--info)"   id="stat-released">—</div></div>
       </div>
       <div class="card">
         <div class="card-header">
@@ -331,10 +321,10 @@
     <!-- ══ TAB: RESERVATION LOGS ══ -->
     <div id="tab-reservationLogs" class="tab-content">
       <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
-        <div class="stat-card amber"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--warn)" id="stat-res-pending">—</div></div>
-        <div class="stat-card green"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--success)" id="stat-res-active">—</div></div>
-        <div class="stat-card red"><div class="stat-label">Overdue</div><div class="stat-value" style="color:var(--danger)" id="stat-res-overdue">—</div></div>
-        <div class="stat-card blue"><div class="stat-label">Returned</div><div class="stat-value" style="color:#60a5fa" id="stat-res-returned">—</div></div>
+        <div class="stat-card amber"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--warn)"    id="stat-res-pending">—</div></div>
+        <div class="stat-card green"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--success)"  id="stat-res-active">—</div></div>
+        <div class="stat-card red">  <div class="stat-label">Overdue</div><div class="stat-value" style="color:var(--danger)"  id="stat-res-overdue">—</div></div>
+        <div class="stat-card blue"> <div class="stat-label">Returned</div><div class="stat-value" style="color:#60a5fa"       id="stat-res-returned">—</div></div>
       </div>
       <div class="card">
         <div class="card-header">
@@ -367,7 +357,8 @@
 
     <!-- ══ TAB: TECH4ED ══ -->
     <div id="tab-tech4ed" class="tab-content">
-      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);max-width:600px;margin-bottom:16px;">
+      <!-- Summary stats -->
+      <div class="stats-grid stats-grid-3" style="max-width:600px;margin-bottom:16px;">
         <div class="stat-card green">
           <div class="stat-label">Active Sessions</div>
           <div class="stat-value" style="color:var(--success)" id="stat-t4e-active">—</div>
@@ -385,37 +376,63 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="card-title">Active Sessions</span>
-            <span class="session-live"><span class="pulse-dot"></span> Live</span>
+      <!-- Sub-tab bar -->
+      <div class="subtab-bar">
+        <button class="subtab-btn active" data-subtab="entries" onclick="switchTech4EdSubTab('entries')">📋 Entries Log</button>
+        <button class="subtab-btn" data-subtab="timein"  onclick="switchTech4EdSubTab('timein')">⏱ Time-In Sessions</button>
+      </div>
+
+      <!-- Sub-tab: Entries (simple log, no timer) -->
+      <div id="t4e-subtab-entries" class="subtab-content active">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Entries</span>
+            <button class="btn btn-primary btn-sm" onclick="openModal('newTech4EdModal')">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>New Entry
+            </button>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="openModal('newTech4EdModal')">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Time In
-          </button>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Time In</th><th>Elapsed</th><th>Action</th></tr></thead>
-            <tbody id="activeTech4EdBody"><tr><td colspan="7"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
-          </table>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Time In</th><th>Time Out</th></tr></thead>
+              <tbody id="entriesLogBody"><tr><td colspan="6"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Completed Sessions Today</span>
-          <span style="font-size:.72rem;color:var(--muted);">Timed out</span>
+      <!-- Sub-tab: Time-In Sessions (with live timer) -->
+      <div id="t4e-subtab-timein" class="subtab-content">
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="card-title">Active Sessions</span>
+              <span class="session-live"><span class="pulse-dot"></span> Live</span>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('newTech4EdModal')">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Time In
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Time In</th><th>Elapsed</th><th>Action</th></tr></thead>
+              <tbody id="activeTech4EdBody"><tr><td colspan="7"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+            </table>
+          </div>
         </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Time In</th><th>Time Out</th><th>Duration</th></tr></thead>
-            <tbody id="tech4EdHistoryBody"><tr><td colspan="7"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
-          </table>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Completed Sessions Today</span>
+            <span style="font-size:.72rem;color:var(--muted);">Timed out</span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Purpose</th><th>Time In</th><th>Time Out</th><th>Duration</th></tr></thead>
+              <tbody id="tech4EdHistoryBody"><tr><td colspan="7"><div class="empty-state"><p>Loading...</p></div></td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </div><!-- end tab-tech4ed -->
 
   </div><!-- .main-inner -->
 </main>
@@ -542,21 +559,11 @@
           <div class="form-group"><label class="form-label">Office *</label><select name="office_select" class="form-input" id="resOfficeSelect" onchange="toggleOtherInput(this,'resOfficeOther')"><option value="">Select office...</option></select><input type="text" name="office_other" class="form-input" id="resOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/></div>
           <div class="form-group"><label class="form-label">Item Name *</label><input type="text" name="item_name" class="form-input" placeholder="e.g. Projector, Camera"/></div>
           <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" value="1"/></div>
-          <div class="form-group">
-            <label class="form-label">Reservation Date *</label>
-            <input type="date" name="reservation_date" class="form-input" id="resDateInput"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Expected Return Date *</label>
-            <input type="date" name="expected_return_date" class="form-input" id="resExpectedReturnInput"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Released By *</label>
-            <select name="released_by_select" class="form-input" id="resReleasedBySelect" onchange="toggleOjtInput(this,'resReleasedByOjt')"><option value="">Select employee...</option></select>
-            <input type="text" name="released_by_ojt" class="form-input" id="resReleasedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/>
-          </div>
+          <div class="form-group"><label class="form-label">Reservation Date *</label><input type="date" name="reservation_date" class="form-input" id="resDateInput"/></div>
+          <div class="form-group"><label class="form-label">Expected Return Date *</label><input type="date" name="expected_return_date" class="form-input" id="resExpectedReturnInput"/></div>
+          <div class="form-group"><label class="form-label">Released By *</label><select name="released_by_select" class="form-input" id="resReleasedBySelect" onchange="toggleOjtInput(this,'resReleasedByOjt')"><option value="">Select employee...</option></select><input type="text" name="released_by_ojt" class="form-input" id="resReleasedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/></div>
         </div>
-        <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:var(--radius-sm);padding:10px 12px;margin-top:4px;margin-bottom:4px;font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:8px;">
+        <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:var(--radius-sm);padding:10px 12px;margin-top:4px;font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:8px;">
           <svg width="14" height="14" fill="none" stroke="#60a5fa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Item will be marked <strong style="color:var(--text);margin:0 3px;">Active</strong> immediately. Return will move it to Reservation History.
         </div>
@@ -598,13 +605,13 @@
   </div>
 </div>
 
-<!-- NEW TECH4ED ENTRY -->
+<!-- NEW TECH4ED ENTRY (shared modal for both sub-tabs) -->
 <div class="modal-overlay hidden" id="newTech4EdModal">
   <div class="modal-box" style="max-width:440px;">
     <div class="modal-header">
       <div>
-        <span class="modal-title">Tech4Ed — Time In</span>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:3px;">Computer use session will start immediately</div>
+        <span class="modal-title">Tech4Ed — New Entry</span>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:3px;">Time in will be recorded as now</div>
       </div>
       <button class="modal-close" onclick="closeModal('newTech4EdModal')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
@@ -631,7 +638,7 @@
           <button type="button" class="btn btn-ghost" onclick="closeModal('newTech4EdModal')">Cancel</button>
           <button type="submit" class="btn btn-primary">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            Start Session
+            Save Entry
           </button>
         </div>
       </form>
@@ -661,7 +668,7 @@
   </div>
 </div>
 
-<!-- DELETE CONFIRMATION MODAL -->
+<!-- DELETE CONFIRMATION -->
 <div class="modal-overlay hidden" id="deleteConfirmModal">
   <div class="modal-box" style="max-width:420px;">
     <div class="modal-header" style="border-bottom-color:rgba(239,68,68,0.2);">
@@ -690,19 +697,6 @@
   </div>
 </div>
 
-<style>
-.detail-section { margin-bottom: 20px; }
-.detail-section:last-child { margin-bottom: 0; }
-.detail-section-title { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-.detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.detail-field { display: flex; flex-direction: column; gap: 3px; }
-.detail-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-.detail-value { font-size: 0.85rem; color: var(--text); font-weight: 500; word-break: break-word; }
-.detail-value.mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text2); }
-.detail-value.long { font-size: 0.82rem; line-height: 1.5; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 2px; }
-.detail-span-2 { grid-column: span 2; }
-</style>
-
 <!-- ══════ SCRIPTS ══════ -->
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
@@ -727,9 +721,9 @@
     window.location.href = 'index.html';
   }
 
-  document.getElementById('repairDateInput').value = today();
-  document.getElementById('borrowDateInput').value  = today();
-  document.getElementById('resDateInput').value     = today();
+  document.getElementById('repairDateInput').value       = today();
+  document.getElementById('borrowDateInput').value        = today();
+  document.getElementById('resDateInput').value           = today();
   document.getElementById('resExpectedReturnInput').value = today();
 
   loadLookups().then(() => loadDashboard());
