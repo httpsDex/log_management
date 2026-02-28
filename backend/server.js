@@ -69,10 +69,10 @@ const loginLimiter = rateLimit({
 
 // ── Database connection ───────────────────────────────────────────────────────
 const db = mysql.createConnection({
-  host:     process.env.DB_HOST     || 'localhost',
-  user:     process.env.DB_USER     || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME     || 'it_office_db',
+  host:     process.env.DB_HOST     || 'sql207.infinityfree.com',
+  user:     process.env.DB_USER     || 'if0_41138974',
+  password: process.env.DB_PASSWORD || 'WqNZ4VfkGc1',
+  database: process.env.DB_NAME     || 'if0_41138974_it_office_db',
 });
 
 db.connect((err) => {
