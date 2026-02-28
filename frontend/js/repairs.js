@@ -1,13 +1,11 @@
 // ── Repairs module — subtabs: Pending | Ready for Release | History ───────────
 
-// Track current page per subtab
 const repairPages = { pending: 1, ready: 1, history: 1 };
 const REPAIR_LIMIT = 15;
 
-// Cache history rows for detail view (avoids re-fetch just for modal)
 let _repairHistoryCache = [];
 
-// ── Load functions (one per subtab) ──────────────────────────────────────────
+// ── Load functions ────────────────────────────────────────────────────────────
 
 async function loadRepairPending(page = 1) {
   repairPages.pending = page;
@@ -15,13 +13,9 @@ async function loadRepairPending(page = 1) {
   if (!res?.ok) return;
   const { data, total, totalPages } = res.data;
 
-  // Update stat cards from the counts of THIS response isn't accurate for total —
-  // stats come from loadRepairStats() called once on tab open
-  const pending = data;
-
-  document.getElementById('pendingRepairsBody').innerHTML = pending.length === 0
+  document.getElementById('pendingRepairsBody').innerHTML = data.length === 0
     ? emptyState('No pending repairs', 11)
-    : pending.map(r => `<tr>
+    : data.map(r => `<tr>
         <td class="td-mono">#${r.id}</td>
         <td class="td-name">${esc(r.customer_name)}</td>
         <td>${esc(r.office)}</td>
@@ -40,19 +34,17 @@ async function loadRepairPending(page = 1) {
         </td>
       </tr>`).join('');
 
-  renderPagination('repairPendingPagination', { page, totalPages, total }, loadRepairPending);
+  renderPagination('repairPendingPagination', { page, totalPages, total, limit: REPAIR_LIMIT }, loadRepairPending);
 }
 
 async function loadRepairReady(page = 1) {
   repairPages.ready = page;
-  // "Ready" = Pending status AND repair_condition is already set
-  // We fetch all pending and filter client-side for this subtab
-  // (small set, so one extra fetch is fine; alternatively add a backend filter)
+  // Fetch all pending, filter client-side for those with a repair_condition set
   const res = await API.getRepairs({ status: 'Pending', page: 1, limit: 200 });
   if (!res?.ok) return;
   const ready = res.data.data.filter(r => r.repair_condition);
 
-  // Manual client-side pagination for ready subtab
+  // Client-side pagination for this subset
   const total      = ready.length;
   const totalPages = Math.ceil(total / REPAIR_LIMIT) || 1;
   const sliced     = ready.slice((page - 1) * REPAIR_LIMIT, page * REPAIR_LIMIT);
@@ -75,7 +67,7 @@ async function loadRepairReady(page = 1) {
         </td>
       </tr>`).join('');
 
-  renderPagination('repairReadyPagination', { page, totalPages, total }, loadRepairReady);
+  renderPagination('repairReadyPagination', { page, totalPages, total, limit: REPAIR_LIMIT }, loadRepairReady);
 }
 
 async function loadRepairHistory(page = 1) {
@@ -112,10 +104,9 @@ async function loadRepairHistory(page = 1) {
         </td>
       </tr>`).join('');
 
-  renderPagination('repairHistoryPagination', { page, totalPages, total }, loadRepairHistory);
+  renderPagination('repairHistoryPagination', { page, totalPages, total, limit: REPAIR_LIMIT }, loadRepairHistory);
 }
 
-// Load stat cards — single fetch for counts
 async function loadRepairStats() {
   const res = await API.getStats();
   if (!res?.ok) return;
@@ -126,7 +117,6 @@ async function loadRepairStats() {
   animateCount(document.getElementById('stat-released'),      r.released);
 }
 
-// Called when navigating to repairs tab
 function loadRepairLogs() {
   loadRepairStats();
   switchRepairSubTab('pending');
@@ -246,7 +236,7 @@ async function submitRelease() {
   else showAlert('releaseAlert', res.data.message || 'Failed to release.');
 }
 
-// ── New repair form submit ────────────────────────────────────────────────────
+// ── New repair form ───────────────────────────────────────────────────────────
 document.getElementById('newRepairForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAlert('newRepairAlert');
@@ -291,8 +281,12 @@ document.getElementById('newRepairForm')?.addEventListener('submit', async (e) =
   } else showAlert('newRepairAlert', res.data.message || 'Failed to create entry.');
 });
 
-// Simple HTML escape to prevent XSS in table cells
+// XSS escape helper (defined here, used across modules via global scope)
 function esc(str) {
   if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

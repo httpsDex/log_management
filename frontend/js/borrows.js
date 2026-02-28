@@ -32,7 +32,7 @@ async function loadBorrowPending(page = 1) {
         </td>
       </tr>`).join('');
 
-  renderPagination('borrowPendingPagination', { page, totalPages, total }, loadBorrowPending);
+  renderPagination('borrowPendingPagination', { page, totalPages, total, limit: BORROW_LIMIT }, loadBorrowPending);
 }
 
 async function loadReturnHistory(page = 1) {
@@ -68,10 +68,9 @@ async function loadReturnHistory(page = 1) {
         </td>
       </tr>`).join('');
 
-  renderPagination('borrowHistoryPagination', { page, totalPages, total }, loadReturnHistory);
+  renderPagination('borrowHistoryPagination', { page, totalPages, total, limit: BORROW_LIMIT }, loadReturnHistory);
 }
 
-// Stat counts from the stats endpoint
 async function loadBorrowStats() {
   const res = await API.getStats();
   if (!res?.ok) return;
@@ -80,7 +79,6 @@ async function loadBorrowStats() {
   animateCount(document.getElementById('stat-borrow-returned'), b.returned);
 }
 
-// Called on tab open
 function loadBorrowLogs() {
   loadBorrowStats();
   switchBorrowSubTab('pending');
@@ -213,6 +211,5 @@ async function submitReturn() {
     closeModal('returnModal');
     loadBorrowPending(borrowPages.pending);
     loadBorrowStats();
-  }
-  else showAlert('returnAlert', res.data.message || 'Failed to process return.');
+  } else showAlert('returnAlert', res.data.message || 'Failed to process return.');
 }

@@ -22,11 +22,10 @@ async function loadT4eEntries(page = 1) {
         <td>${esc(e.purpose)}</td>
       </tr>`).join('');
 
-  renderPagination('t4eEntriesPagination', { page, totalPages, total }, loadT4eEntries);
+  renderPagination('t4eEntriesPagination', { page, totalPages, total, limit: T4E_LIMIT }, loadT4eEntries);
 }
 
 async function loadT4eActiveSessions() {
-  // Active sessions are usually a small set — no pagination needed
   const rows = await API.getActiveSessions();
   if (!rows?.ok) return;
   const active = rows.data;
@@ -53,17 +52,13 @@ async function loadT4eActiveSessions() {
 
 async function loadT4eHistory(page = 1) {
   t4ePages.history = page;
-  // Completed sessions: type=session with time_out set
+  // Fetch session-type records paginated from backend
   const res = await API.getTech4Ed({ type: 'session', page, limit: T4E_LIMIT });
   if (!res?.ok) return;
-  // Filter finished on client — backend returns all sessions paginated
-  // We need finished ones only; pass a finished flag or filter here
-  // To keep backend simple, we filter client-side from session-typed results
-  const finished = res.data.data.filter(e => e.time_out);
+  const { data, total, totalPages } = res.data;
 
-  // Compute total finished for pagination (approximate — filtered from page)
-  // For accurate pagination we need a separate count; use what we have
-  const { total, totalPages } = res.data;
+  // Filter only completed sessions (time_out set)
+  const finished = data.filter(e => e.time_out);
 
   document.getElementById('tech4EdHistoryBody').innerHTML = finished.length === 0
     ? emptyState('No completed sessions yet', 7)
@@ -77,7 +72,7 @@ async function loadT4eHistory(page = 1) {
         <td class="td-mono" style="color:var(--success);">${calcDuration(e.time_in, e.time_out)}</td>
       </tr>`).join('');
 
-  renderPagination('t4eHistoryPagination', { page, totalPages, total }, loadT4eHistory);
+  renderPagination('t4eHistoryPagination', { page, totalPages, total, limit: T4E_LIMIT }, loadT4eHistory);
 }
 
 async function loadT4eStats() {
@@ -88,12 +83,11 @@ async function loadT4eStats() {
   animateCount(document.getElementById('stat-t4e-total'),   t.total);
 }
 
-// Called on tab open — loads stats + first subtab
 function loadTech4Ed() {
   clearInterval(_tech4edPollTimer);
   loadT4eStats();
   switchTech4EdSubTab('entries');
-  // Poll active sessions every 30s to update elapsed timers
+  // Refresh elapsed timers every 30s while on this tab
   _tech4edPollTimer = setInterval(updateElapsedTimes, 30000);
 }
 
@@ -123,7 +117,9 @@ function updateElapsedTimes() {
 
 function fmtTime(dtStr) {
   if (!dtStr) return '—';
-  return new Date(dtStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  return new Date(dtStr).toLocaleTimeString('en-PH', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+  });
 }
 
 function calcElapsed(timeInStr) {
@@ -191,7 +187,7 @@ document.getElementById('newTimeInForm')?.addEventListener('submit', async (e) =
   } else showAlert('newTimeInAlert', res.data.message || 'Failed to start session.');
 });
 
-// Time out button
+// Time out button handler
 async function submitTimeout(id) {
   if (!confirm('Confirm time out for this session?')) return;
   const res = await API.timeoutTech4Ed(id);

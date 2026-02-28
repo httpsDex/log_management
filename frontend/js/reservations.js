@@ -9,7 +9,6 @@ let _reservationHistoryCache = [];
 
 async function loadReservationsActive(page = 1) {
   resPages.active = page;
-  // status=Active fetches Active + Overdue from backend
   const res = await API.getReservations({ status: 'Active', page, limit: RES_LIMIT });
   if (!res?.ok) return;
   const { data, total, totalPages } = res.data;
@@ -37,7 +36,7 @@ async function loadReservationsActive(page = 1) {
         </tr>`;
       }).join('');
 
-  renderPagination('resPendingPagination', { page, totalPages, total }, loadReservationsActive);
+  renderPagination('resPendingPagination', { page, totalPages, total, limit: RES_LIMIT }, loadReservationsActive);
 }
 
 async function loadReservationHistory(page = 1) {
@@ -74,7 +73,7 @@ async function loadReservationHistory(page = 1) {
         </td>
       </tr>`).join('');
 
-  renderPagination('resHistoryPagination', { page, totalPages, total }, loadReservationHistory);
+  renderPagination('resHistoryPagination', { page, totalPages, total, limit: RES_LIMIT }, loadReservationHistory);
 }
 
 async function loadReservationStats() {
@@ -87,7 +86,6 @@ async function loadReservationStats() {
   animateCount(document.getElementById('stat-res-total'),    r.total);
 }
 
-// Called on tab open
 function loadReservations() {
   loadReservationStats();
   switchResSubTab('active');
@@ -207,10 +205,10 @@ function openReservationReturn(id) {
 }
 
 async function submitReservationReturn() {
-  const id               = document.getElementById('resReturnId').value;
-  const returned_by      = document.getElementById('resReturnedBy').value.trim();
+  const id                 = document.getElementById('resReturnId').value;
+  const returned_by        = document.getElementById('resReturnedBy').value.trim();
   const actual_return_date = document.getElementById('resActualReturnDate').value;
-  const received_by      = resolveSelectValue(
+  const received_by        = resolveSelectValue(
     document.getElementById('resReturnReceivedBySelect'), 'resReturnReceivedByOjt', '', 'resReturnReceivedByOjt'
   );
   const comments = document.getElementById('resReturnComments').value.trim();
@@ -224,6 +222,5 @@ async function submitReservationReturn() {
     closeModal('reservationReturnModal');
     loadReservationsActive(resPages.active);
     loadReservationStats();
-  }
-  else showAlert('resReturnAlert', res.data.message || 'Failed to process return.');
+  } else showAlert('resReturnAlert', res.data.message || 'Failed to process return.');
 }

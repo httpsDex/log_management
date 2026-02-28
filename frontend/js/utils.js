@@ -1,6 +1,9 @@
 // ── Utility functions shared across all modules ───────────────────────────────
 
-// Single status badge
+// Global pagination registry — maps containerId → callback function
+// This avoids serializing functions as strings in onclick attributes
+const _paginationCallbacks = {};
+
 function badge(status) {
   const map = {
     Pending:       'badge-pending',
@@ -14,23 +17,19 @@ function badge(status) {
   return `<span class="badge ${map[status] || ''}">${status}</span>`;
 }
 
-// Two stacked badges for repair rows: lifecycle status + repair condition
 function repairBadges(status, repairCondition) {
   return `<div style="display:flex;flex-direction:column;gap:4px;">${badge(status)}${repairCondition ? badge(repairCondition) : ''}</div>`;
 }
 
-// Format a date string to readable short date
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// Today's date as YYYY-MM-DD for date inputs
 function today() {
   return new Date().toISOString().split('T')[0];
 }
 
-// Human-readable relative time
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -42,7 +41,6 @@ function timeAgo(dateStr) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-// Empty table state row
 function emptyState(message, colspan) {
   return `<tr><td colspan="${colspan}">
     <div class="empty-state">
@@ -61,6 +59,7 @@ function showAlert(id, msg, type = 'error') {
   el.className = `alert alert-${type}`;
   el.textContent = msg;
 }
+
 function clearAlert(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -71,12 +70,11 @@ function clearAlert(id) {
 function openModal(id)  { document.getElementById(id)?.classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
 
-// Close modal when clicking backdrop
+// Close modal on backdrop click
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal-overlay')) e.target.classList.add('hidden');
 });
 
-// Show/hide "Other" text input when select has __other__ option chosen
 function toggleOtherInput(selectEl, otherInputId) {
   const input = document.getElementById(otherInputId);
   if (!input) return;
@@ -84,7 +82,6 @@ function toggleOtherInput(selectEl, otherInputId) {
   if (selectEl.value !== '__other__') input.value = '';
 }
 
-// Show/hide OJT name text input when select has __ojt__ option chosen
 function toggleOjtInput(selectEl, ojtInputId) {
   const input = document.getElementById(ojtInputId);
   if (!input) return;
@@ -92,7 +89,6 @@ function toggleOjtInput(selectEl, ojtInputId) {
   if (selectEl.value !== '__ojt__') input.value = '';
 }
 
-// Get the final string value from a select that may have __other__ or __ojt__
 function resolveSelectValue(selectEl, otherInputId, otherPrefix, ojtInputId) {
   const val = selectEl.value;
   if (val === '__other__') {
@@ -106,7 +102,6 @@ function resolveSelectValue(selectEl, otherInputId, otherPrefix, ojtInputId) {
   return val;
 }
 
-// Animate a number counting up from current value to target
 function animateCount(el, target, duration = 600) {
   if (!el) return;
   const start = parseInt(el.textContent) || 0;
@@ -121,59 +116,74 @@ function animateCount(el, target, duration = 600) {
   requestAnimationFrame(update);
 }
 
-// Animate bar chart fill widths after render
 function animateBars() {
   document.querySelectorAll('.bar-fill[data-width]').forEach(bar => {
     setTimeout(() => { bar.style.width = bar.dataset.width; }, 100);
   });
 }
 
-// ── Pagination renderer ───────────────────────────────────────────────────────
-// Renders page buttons into containerId and calls onPageChange(page) on click
-function renderPagination(containerId, { page, totalPages, total }, onPageChange) {
+// ── Pagination ────────────────────────────────────────────────────────────────
+// Registers a callback in the global registry, then renders page buttons.
+// Buttons call _paginate(containerId, page) which looks up the callback.
+function _paginate(containerId, page) {
+  const cb = _paginationCallbacks[containerId];
+  if (cb) cb(page);
+}
+
+function renderPagination(containerId, { page, totalPages, total, limit = 15 }, onPageChange) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
+  // Register the callback so _paginate() can call it
+  _paginationCallbacks[containerId] = onPageChange;
+
   if (totalPages <= 1) { el.innerHTML = ''; return; }
 
-  const start = (page - 1) * 20 + 1; // approximate, frontend doesn't know limit easily
+  const startRecord = (page - 1) * limit + 1;
+  const endRecord   = Math.min(page * limit, total);
+
   let html = `<div class="pagination">`;
 
-  // Prev button
+  // Previous button
   html += `<button class="page-btn ${page === 1 ? 'disabled' : ''}"
-    onclick="${page > 1 ? `(${onPageChange.toString()})(${page - 1})` : ''}"
+    onclick="_paginate('${containerId}', ${page - 1})"
     ${page === 1 ? 'disabled' : ''}>
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="13" height="13">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
     </svg>
   </button>`;
 
-  // Page number buttons — show max 5 around current
+  // Page number buttons — window of 5 around current page
   const pages = [];
   for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) pages.push(i);
 
   if (pages[0] > 1) {
-    html += `<button class="page-btn" onclick="(${onPageChange.toString()})(1)">1</button>`;
+    html += `<button class="page-btn" onclick="_paginate('${containerId}', 1)">1</button>`;
     if (pages[0] > 2) html += `<span class="page-dots">…</span>`;
   }
+
   pages.forEach(p => {
-    html += `<button class="page-btn ${p === page ? 'active' : ''}" onclick="(${onPageChange.toString()})(${p})">${p}</button>`;
+    html += `<button class="page-btn ${p === page ? 'active' : ''}"
+      onclick="_paginate('${containerId}', ${p})">${p}</button>`;
   });
+
   if (pages[pages.length - 1] < totalPages) {
     if (pages[pages.length - 1] < totalPages - 1) html += `<span class="page-dots">…</span>`;
-    html += `<button class="page-btn" onclick="(${onPageChange.toString()})(${totalPages})">${totalPages}</button>`;
+    html += `<button class="page-btn" onclick="_paginate('${containerId}', ${totalPages})">${totalPages}</button>`;
   }
 
   // Next button
   html += `<button class="page-btn ${page === totalPages ? 'disabled' : ''}"
-    onclick="${page < totalPages ? `(${onPageChange.toString()})(${page + 1})` : ''}"
+    onclick="_paginate('${containerId}', ${page + 1})"
     ${page === totalPages ? 'disabled' : ''}>
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="13" height="13">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
   </button>`;
 
-  html += `<span class="page-info">${total} records</span></div>`;
+  // Record count info
+  html += `<span class="page-info">${startRecord}–${endRecord} of ${total}</span></div>`;
+
   el.innerHTML = html;
 }
 
@@ -201,7 +211,6 @@ async function submitDelete() {
   if (!res) return;
   if (res.ok) {
     closeModal('deleteConfirmModal');
-    // Refresh the correct history tab
     if (type === 'repair')      loadRepairHistory(repairPages.history);
     else if (type === 'borrow') loadReturnHistory(borrowPages.history);
     else                        loadReservationHistory(resPages.history);
