@@ -37,7 +37,6 @@ app.use(helmet({
 const allowedOrigins = [
   'http://127.0.0.1:5500',
   'http://localhost:3000',
-  'https://log-management-3bou.onrender.com',
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -45,7 +44,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error('Not allowed by CORS'));
   },
-  credentials: false,
+  credentials: true,
 }));
 
 app.use(express.json());
@@ -70,10 +69,10 @@ const loginLimiter = rateLimit({
 
 // ── Database connection ───────────────────────────────────────────────────────
 const db = mysql.createConnection({
-  host:     process.env.DB_HOST     || 'b7f8zlf3aixbkdc0pxce-mysql.services.clever-cloud.com',
-  user:     process.env.DB_USER     || 'ucskw2jixwh4a2ex',
-  password: process.env.DB_PASSWORD || '3Z4PZWvR70ddwPSuhcrz',
-  database: process.env.DB_NAME     || 'b7f8zlf3aixbkdc0pxce',
+  host:     process.env.DB_HOST     || 'localhost',
+  user:     process.env.DB_USER     || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME     || 'it_office_db',
 });
 
 db.connect((err) => {
