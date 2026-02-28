@@ -1,7 +1,7 @@
 // ── Navigation module — handles sidebar tab switching ─────────────────────────
 
 const tabMeta = {
-  dashboard:       ['Dashboard',          'Overview of all IT office activities'],
+  dashboard:       ['Dashboard',          'Overview of all ITSS office activities'],
   repairLogs:      ['Repair Logs',        'Manage and track all repair requests'],
   borrowLogs:      ['Borrow Logs',        'Manage borrowed items'],
   reservationLogs: ['Reservations',       'Manage item reservations'],

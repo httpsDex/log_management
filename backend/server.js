@@ -1,17 +1,52 @@
 require('dotenv').config();
-const express  = require('express');
-const cors     = require('cors');
-const mysql    = require('mysql');
-const bcrypt   = require('bcrypt');
-const jwt      = require('jsonwebtoken');
-const moment   = require('moment');
-const path     = require('path');
+const express     = require('express');
+const cors        = require('cors');
+const mysql       = require('mysql2');
+const bcrypt      = require('bcrypt');
+const jwt         = require('jsonwebtoken');
+const moment      = require('moment');
+const path        = require('path');
+const helmet      = require('helmet');
+const rateLimit   = require('express-rate-limit');
+
+// Crash if JWT_SECRET is missing — never fall back to a weak default
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET is not set in .env. Exiting.');
+  process.exit(1);
+}
 
 const app        = express();
 const PORT       = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
+const JWT_SECRET = process.env.JWT_SECRET;
 
-app.use(cors());
+// Helmet — sets secure HTTP headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'"],
+      styleSrc:    ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:     ["'self'", 'https://fonts.gstatic.com'],
+      connectSrc:  ["'self'"],
+      imgSrc:      ["'self'", 'data:'],
+    },
+  },
+}));
+
+// CORS — allow only your dev origins
+const allowedOrigins = [
+  'http://127.0.0.1:5500',
+  'http://localhost:3000',
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. same-origin, Postman during dev)
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -22,6 +57,15 @@ const logger = (req, res, next) => {
   next();
 };
 app.use(logger);
+
+// Rate limiter for login — 20 attempts per 15 minutes per IP
+const loginLimiter = rateLimit({
+  windowMs:         15 * 60 * 1000,
+  max:              20,
+  standardHeaders:  true,
+  legacyHeaders:    false,
+  message:          { message: 'Too many login attempts. Please try again in 15 minutes.' },
+});
 
 // ── Database connection ───────────────────────────────────────────────────────
 const db = mysql.createConnection({
@@ -54,17 +98,23 @@ const auth = (req, res, next) => {
   }
 };
 
-// Check required fields exist and are non-empty
+// Required fields check
 const validate = (fields, body) => {
   for (const f of fields)
     if (!body[f] || String(body[f]).trim() === '') return `"${f}" is required`;
   return null;
 };
 
-// Build paginated response — returns { data, total, page, limit, totalPages }
+// Quantity must be a whole positive integer within 1–9999
+const validateQuantity = (val) => {
+  const n = Number(val);
+  return Number.isInteger(n) && n >= 1 && n <= 9999;
+};
+
+// Paginated response helper
 const paginate = async (baseSQL, countSQL, params, req) => {
-  const page  = Math.max(1, parseInt(req.query.page)  || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+  const page   = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit  = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
   const offset = (page - 1) * limit;
 
   const countRows = await query(countSQL, params);
@@ -74,36 +124,42 @@ const paginate = async (baseSQL, countSQL, params, req) => {
   return { data: rows, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 
+// Generic 500 handler — never expose raw error to client
+const serverError = (res, err) => {
+  console.error(err);
+  res.status(500).json({ message: 'An internal server error occurred.' });
+};
+
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password)
     return res.status(400).json({ message: 'Username and password are required' });
   try {
-    const rows = await query('SELECT * FROM users WHERE username = ? LIMIT 1', [username]);
+    // BINARY makes the username comparison case-sensitive
+    const rows = await query('SELECT * FROM users WHERE BINARY username = ? LIMIT 1', [username]);
     if (!rows.length) return res.status(401).json({ message: 'Invalid credentials' });
     const match = await bcrypt.compare(password, rows[0].password);
     if (!match) return res.status(401).json({ message: 'Invalid credentials' });
     const token = jwt.sign({ id: rows[0].id, username: rows[0].username }, JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, username: rows[0].username });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
 // ── LOOKUPS ───────────────────────────────────────────────────────────────────
 app.get('/api/offices', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM offices ORDER BY name ASC', [])); }
-  catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
+  catch (err) { serverError(res, err); }
 });
 
 app.get('/api/employees', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM employees WHERE is_active = 1 ORDER BY full_name ASC', [])); }
-  catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
+  catch (err) { serverError(res, err); }
 });
 
-// ── DASHBOARD STATS (single endpoint for all counts) ─────────────────────────
-// Returns aggregate counts used by the dashboard — no pagination needed
+// ── DASHBOARD STATS ───────────────────────────────────────────────────────────
 app.get('/api/stats', auth, async (req, res) => {
   try {
     const [repairStats] = await query(`
@@ -138,7 +194,6 @@ app.get('/api/stats', auth, async (req, res) => {
         SUM(DATE(time_in) = CURDATE()) AS today
       FROM tech4ed`, []);
 
-    // Recent activity: last 10 across all tables
     const recentRepairs = await query(
       `SELECT 'repair' AS kind, id, customer_name AS name, item_name AS item, office, status, updated_at AS ts FROM repairs ORDER BY updated_at DESC LIMIT 5`, []);
     const recentBorrows = await query(
@@ -146,7 +201,6 @@ app.get('/api/stats', auth, async (req, res) => {
     const recentRes = await query(
       `SELECT 'reservation' AS kind, id, borrower_name AS name, item_name AS item, office, status, updated_at AS ts FROM reservations ORDER BY updated_at DESC LIMIT 5`, []);
 
-    // Office breakdown — all three tables combined
     const officeData = await query(`
       SELECT office, COUNT(*) AS cnt FROM (
         SELECT office FROM repairs
@@ -154,7 +208,6 @@ app.get('/api/stats', auth, async (req, res) => {
         UNION ALL SELECT office FROM reservations
       ) t GROUP BY office ORDER BY cnt DESC LIMIT 8`, []);
 
-    // Monthly trend — last 6 months
     const monthlyRepairs = await query(`
       SELECT DATE_FORMAT(date_received,'%Y-%m') AS month, COUNT(*) AS cnt
       FROM repairs WHERE date_received >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
@@ -179,18 +232,17 @@ app.get('/api/stats', auth, async (req, res) => {
       monthly: { repairs: monthlyRepairs, borrows: monthlyBorrows, reservations: monthlyRes },
     });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
 // ── REPAIRS ───────────────────────────────────────────────────────────────────
-// GET /api/repairs?status=Pending&page=1&limit=20
 app.get('/api/repairs', auth, async (req, res) => {
   try {
     const { status } = req.query;
-    let baseSQL   = 'SELECT * FROM repairs';
-    let countSQL  = 'SELECT COUNT(*) AS total FROM repairs';
-    const params  = [];
+    let baseSQL  = 'SELECT * FROM repairs';
+    let countSQL = 'SELECT COUNT(*) AS total FROM repairs';
+    const params = [];
 
     if (status) {
       baseSQL  += ' WHERE status = ?';
@@ -199,17 +251,15 @@ app.get('/api/repairs', auth, async (req, res) => {
     }
     baseSQL += ' ORDER BY created_at DESC';
 
-    const result = await paginate(baseSQL, countSQL, params, req);
-    res.json(result);
+    res.json(await paginate(baseSQL, countSQL, params, req));
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
-// GET /api/repairs/all — no pagination, used by dashboard
 app.get('/api/repairs/all', auth, async (req, res) => {
   try { res.json(await query('SELECT * FROM repairs ORDER BY created_at DESC', [])); }
-  catch (err) { res.status(500).json({ message: 'Server error', error: err.message }); }
+  catch (err) { serverError(res, err); }
 });
 
 app.post('/api/repairs', auth, async (req, res) => {
@@ -218,6 +268,8 @@ app.post('/api/repairs', auth, async (req, res) => {
     req.body
   );
   if (validErr) return res.status(400).json({ message: validErr });
+  if (!validateQuantity(req.body.quantity))
+    return res.status(400).json({ message: 'Quantity must be a whole number between 1 and 9999.' });
 
   const { customer_name, office, item_name, serial_specs, quantity, date_received, received_by, problem_description, contact_number } = req.body;
   const contactValue = contact_number ? String(contact_number).trim() || null : null;
@@ -231,7 +283,7 @@ app.post('/api/repairs', auth, async (req, res) => {
     );
     res.status(201).json({ message: 'Repair entry created', id: result.insertId });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -252,7 +304,7 @@ app.patch('/api/repairs/:id/condition', auth, async (req, res) => {
       return res.status(404).json({ message: 'Record not found or already released.' });
     res.json({ message: `Condition updated to ${repair_condition}` });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -276,7 +328,7 @@ app.patch('/api/repairs/:id/release', auth, async (req, res) => {
     );
     res.json({ message: 'Item released successfully.' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -293,12 +345,11 @@ app.delete('/api/repairs/:id', auth, async (req, res) => {
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Record not found.' });
     res.json({ message: 'Repair record deleted.' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
 // ── BORROWED ITEMS ────────────────────────────────────────────────────────────
-// GET /api/borrowed?status=Pending&page=1&limit=20
 app.get('/api/borrowed', auth, async (req, res) => {
   try {
     const { status } = req.query;
@@ -313,10 +364,9 @@ app.get('/api/borrowed', auth, async (req, res) => {
     }
     baseSQL += ' ORDER BY created_at DESC';
 
-    const result = await paginate(baseSQL, countSQL, params, req);
-    res.json(result);
+    res.json(await paginate(baseSQL, countSQL, params, req));
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -326,6 +376,8 @@ app.post('/api/borrowed', auth, async (req, res) => {
     req.body
   );
   if (validErr) return res.status(400).json({ message: validErr });
+  if (!validateQuantity(req.body.quantity))
+    return res.status(400).json({ message: 'Quantity must be a whole number between 1 and 9999.' });
 
   const { borrower_name, office, item_borrowed, quantity, released_by, date_borrowed, contact_number } = req.body;
   const contactValue = contact_number ? String(contact_number).trim() || null : null;
@@ -339,7 +391,7 @@ app.post('/api/borrowed', auth, async (req, res) => {
     );
     res.status(201).json({ message: 'Borrow entry created', id: result.insertId });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -356,7 +408,7 @@ app.patch('/api/borrowed/:id/return', auth, async (req, res) => {
     );
     res.json({ message: 'Item marked as returned.' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -373,12 +425,11 @@ app.delete('/api/borrowed/:id', auth, async (req, res) => {
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Record not found.' });
     res.json({ message: 'Borrow record deleted.' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
 // ── RESERVATIONS ──────────────────────────────────────────────────────────────
-// GET /api/reservations?status=Active&page=1&limit=20
 app.get('/api/reservations', auth, async (req, res) => {
   try {
     const { status } = req.query;
@@ -388,7 +439,6 @@ app.get('/api/reservations', auth, async (req, res) => {
 
     if (status) {
       if (status === 'Active') {
-        // Active includes both Active and Overdue
         baseSQL  += " WHERE status IN ('Active','Overdue')";
         countSQL += " WHERE status IN ('Active','Overdue')";
       } else {
@@ -399,10 +449,9 @@ app.get('/api/reservations', auth, async (req, res) => {
     }
     baseSQL += ' ORDER BY created_at DESC';
 
-    const result = await paginate(baseSQL, countSQL, params, req);
-    res.json(result);
+    res.json(await paginate(baseSQL, countSQL, params, req));
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -412,6 +461,8 @@ app.post('/api/reservations', auth, async (req, res) => {
     req.body
   );
   if (validErr) return res.status(400).json({ message: validErr });
+  if (!validateQuantity(req.body.quantity))
+    return res.status(400).json({ message: 'Quantity must be a whole number between 1 and 9999.' });
 
   const { borrower_name, contact_number, office, item_name, quantity, reservation_date, expected_return_date, released_by } = req.body;
 
@@ -429,7 +480,7 @@ app.post('/api/reservations', auth, async (req, res) => {
     );
     res.status(201).json({ message: 'Reservation created', id: result.insertId });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -446,7 +497,7 @@ app.patch('/api/reservations/:id/return', auth, async (req, res) => {
     );
     res.json({ message: 'Reservation marked as returned.' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -463,20 +514,19 @@ app.delete('/api/reservations/:id', auth, async (req, res) => {
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Record not found.' });
     res.json({ message: 'Reservation deleted.' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
 // ── TECH4ED ───────────────────────────────────────────────────────────────────
-// GET /api/tech4ed?type=entry|session&active=1&page=1&limit=20
 app.get('/api/tech4ed', auth, async (req, res) => {
   try {
     const { type, active } = req.query;
     const conditions = [];
     const params     = [];
 
-    if (type)   { conditions.push('type = ?');         params.push(type); }
-    if (active === '1') { conditions.push('time_out IS NULL AND type = ?'); params.push('session'); }
+    if (type)         { conditions.push('type = ?');                            params.push(type); }
+    if (active === '1') { conditions.push('time_out IS NULL AND type = ?');     params.push('session'); }
 
     let baseSQL  = 'SELECT * FROM tech4ed';
     let countSQL = 'SELECT COUNT(*) AS total FROM tech4ed';
@@ -488,23 +538,20 @@ app.get('/api/tech4ed', auth, async (req, res) => {
     }
     baseSQL += ' ORDER BY time_in DESC';
 
-    const result = await paginate(baseSQL, countSQL, params, req);
-    res.json(result);
+    res.json(await paginate(baseSQL, countSQL, params, req));
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
-// Active sessions only (no pagination — usually small set)
 app.get('/api/tech4ed/active', auth, async (req, res) => {
   try {
     res.json(await query(`SELECT * FROM tech4ed WHERE type='session' AND time_out IS NULL ORDER BY time_in DESC`, []));
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
-// Live session time-in
 app.post('/api/tech4ed', auth, async (req, res) => {
   const validErr = validate(['name','gender','purpose'], req.body);
   if (validErr) return res.status(400).json({ message: validErr });
@@ -521,11 +568,10 @@ app.post('/api/tech4ed', auth, async (req, res) => {
     );
     res.status(201).json({ message: 'Session started', id: result.insertId });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
-// Simple entry log (no timer)
 app.post('/api/tech4ed/entry', auth, async (req, res) => {
   const validErr = validate(['name','gender','purpose'], req.body);
   if (validErr) return res.status(400).json({ message: validErr });
@@ -542,7 +588,7 @@ app.post('/api/tech4ed/entry', auth, async (req, res) => {
     );
     res.status(201).json({ message: 'Entry logged', id: result.insertId });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -557,9 +603,9 @@ app.patch('/api/tech4ed/:id/timeout', auth, async (req, res) => {
       return res.status(400).json({ message: 'Session not found or already timed out.' });
     res.json({ message: 'Time out recorded.' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    serverError(res, err);
   }
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => console.log(`IT Office Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`ITSS Office Server running on http://localhost:${PORT}`));

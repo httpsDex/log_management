@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IT Office — Dashboard</title>
+  <title>ITSS Office Dashboard</title>
+  <link rel="icon" type="image/jpeg" href="assets/logo.jpg"/>
   <link rel="stylesheet" href="css/main.css"/>
   <style>
-    /* ── Detail modal field styles ── */
     .detail-section { margin-bottom: 20px; }
     .detail-section:last-child { margin-bottom: 0; }
     .detail-section-title { font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
@@ -18,7 +18,6 @@
     .detail-value.long { font-size:.82rem; line-height:1.5; color:var(--text2); background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; margin-top:2px; }
     .detail-span-2 { grid-column:span 2; }
 
-    /* ── Pagination ── */
     .pagination { display:flex; align-items:center; gap:4px; padding:12px 16px; border-top:1px solid var(--border); flex-wrap:wrap; }
     .page-btn { min-width:30px; height:30px; padding:0 8px; border-radius:var(--radius-sm); background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-size:.72rem; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; display:flex; align-items:center; justify-content:center; transition:all var(--transition); }
     .page-btn:hover:not(.disabled):not(.active) { background:var(--surface2); color:var(--text); }
@@ -37,14 +36,15 @@
   <button class="sidebar-close-btn" onclick="closeSidebar()">
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
   </button>
+
   <div class="sidebar-logo">
     <div style="display:flex;align-items:center;gap:11px;">
-      <div class="logo-badge">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+      <div class="logo-badge" style="background:none;box-shadow:none;padding:0;overflow:hidden;">
+        <img src="assets/logo.jpg" alt="ITSS Office Logo" style="width:36px;height:36px;object-fit:cover;border-radius:9px;display:block;"/>
       </div>
       <div>
-        <div class="logo-title">IT Office</div>
-        <div class="logo-sub">LOGS SYSTEM v2</div>
+        <div class="logo-title">ITSS Office</div>
+        <div class="logo-sub">LOGS SYSTEM</div>
       </div>
     </div>
   </div>
@@ -104,12 +104,11 @@
   <div class="main-inner">
     <div class="page-header desktop-header">
       <div class="page-title" id="pageTitle">Dashboard</div>
-      <div class="page-sub"   id="pageSubtitle">Overview of all IT office activities</div>
+      <div class="page-sub"   id="pageSubtitle">Overview of all ITSS office activities</div>
     </div>
 
     <!-- ══ TAB: DASHBOARD ══ -->
     <div id="tab-dashboard" class="tab-content active">
-      <!-- Row 1: Main stat cards -->
       <div class="stats-grid">
         <div class="stat-card blue">
           <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:#60a5fa;">
@@ -145,7 +144,6 @@
         </div>
       </div>
 
-      <!-- Row 2: Secondary stat cards -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;">
         <div class="stat-card green"  style="padding:14px 18px;"><div class="stat-label">Items Released</div><div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-released">—</div></div>
         <div class="stat-card blue"   style="padding:14px 18px;"><div class="stat-label">Items Returned</div><div class="stat-value" style="color:#60a5fa;font-size:1.5rem;" id="ds-returned">—</div></div>
@@ -153,7 +151,6 @@
         <div class="stat-card"        style="padding:14px 18px;"><div class="stat-label">Tech4Ed Today</div><div class="stat-value" style="color:#818cf8;font-size:1.5rem;" id="ds-tech4ed">—</div></div>
       </div>
 
-      <!-- Row 3: Activity feed + donut + office bar -->
       <div class="dashboard-grid">
         <div class="card">
           <div class="card-header">
@@ -188,7 +185,6 @@
         </div>
       </div>
 
-      <!-- Row 4: Charts -->
       <div class="charts-grid" style="margin-top:16px;">
         <div class="card">
           <div class="card-header"><span class="card-title">Monthly Trend</span><span class="card-sub">Last 6 months</span></div>
@@ -212,12 +208,11 @@
           </div>
         </div>
       </div>
-    </div><!-- end tab-dashboard -->
+    </div>
 
 
     <!-- ══ TAB: REPAIR LOGS ══ -->
     <div id="tab-repairLogs" class="tab-content">
-      <!-- Stat cards -->
       <div class="stats-grid">
         <div class="stat-card amber"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--warn)"    id="stat-pending">—</div></div>
         <div class="stat-card green"><div class="stat-label">Fixed</div><div class="stat-value" style="color:var(--success)"  id="stat-fixed">—</div></div>
@@ -225,14 +220,12 @@
         <div class="stat-card">      <div class="stat-label">Released</div><div class="stat-value" style="color:var(--info)"   id="stat-released">—</div></div>
       </div>
 
-      <!-- Subtab bar -->
       <div class="subtab-bar">
         <button class="subtab-btn active" data-subtab="pending" onclick="switchRepairSubTab('pending')">🔧 Pending</button>
         <button class="subtab-btn" data-subtab="ready"   onclick="switchRepairSubTab('ready')">✅ Ready for Release</button>
         <button class="subtab-btn" data-subtab="history" onclick="switchRepairSubTab('history')">📋 History</button>
       </div>
 
-      <!-- Pending subtab -->
       <div id="repair-subtab-pending" class="subtab-content active">
         <div class="card">
           <div class="card-header">
@@ -251,7 +244,6 @@
         </div>
       </div>
 
-      <!-- Ready for release subtab -->
       <div id="repair-subtab-ready" class="subtab-content">
         <div class="card">
           <div class="card-header">
@@ -268,7 +260,6 @@
         </div>
       </div>
 
-      <!-- History subtab -->
       <div id="repair-subtab-history" class="subtab-content">
         <div class="card">
           <div class="card-header"><span class="card-title">Released Repairs</span><span class="badge badge-released">Released</span></div>
@@ -281,24 +272,21 @@
           <div id="repairHistoryPagination"></div>
         </div>
       </div>
-    </div><!-- end tab-repairLogs -->
+    </div>
 
 
     <!-- ══ TAB: BORROW LOGS ══ -->
     <div id="tab-borrowLogs" class="tab-content">
-      <!-- Stat cards -->
       <div class="stats-grid stats-grid-2" style="max-width:400px;margin-bottom:16px;">
         <div class="stat-card amber"><div class="stat-label">Pending Returns</div><div class="stat-value" style="color:var(--warn)"    id="stat-borrow-pending">—</div></div>
         <div class="stat-card green"><div class="stat-label">Returned</div><div class="stat-value" style="color:var(--success)" id="stat-borrow-returned">—</div></div>
       </div>
 
-      <!-- Subtab bar -->
       <div class="subtab-bar">
         <button class="subtab-btn active" data-subtab="pending" onclick="switchBorrowSubTab('pending')">📦 Pending</button>
         <button class="subtab-btn" data-subtab="history" onclick="switchBorrowSubTab('history')">↩️ Returned History</button>
       </div>
 
-      <!-- Pending subtab -->
       <div id="borrow-subtab-pending" class="subtab-content active">
         <div class="card">
           <div class="card-header">
@@ -317,7 +305,6 @@
         </div>
       </div>
 
-      <!-- History subtab -->
       <div id="borrow-subtab-history" class="subtab-content">
         <div class="card">
           <div class="card-header"><span class="card-title">Returned Items History</span><span class="badge badge-returned">Returned</span></div>
@@ -330,12 +317,11 @@
           <div id="borrowHistoryPagination"></div>
         </div>
       </div>
-    </div><!-- end tab-borrowLogs -->
+    </div>
 
 
     <!-- ══ TAB: RESERVATIONS ══ -->
     <div id="tab-reservationLogs" class="tab-content">
-      <!-- Stat cards -->
       <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
         <div class="stat-card green"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--success)"  id="stat-res-active">—</div></div>
         <div class="stat-card red">  <div class="stat-label">Overdue</div><div class="stat-value" style="color:var(--danger)"  id="stat-res-overdue">—</div></div>
@@ -343,13 +329,11 @@
         <div class="stat-card">      <div class="stat-label">Total</div><div class="stat-value" style="color:var(--text)"      id="stat-res-total">—</div></div>
       </div>
 
-      <!-- Subtab bar -->
       <div class="subtab-bar">
         <button class="subtab-btn active" data-subtab="active"  onclick="switchResSubTab('active')">📅 Active</button>
         <button class="subtab-btn" data-subtab="history" onclick="switchResSubTab('history')">📋 History</button>
       </div>
 
-      <!-- Active subtab -->
       <div id="res-subtab-active" class="subtab-content active">
         <div class="card">
           <div class="card-header">
@@ -368,7 +352,6 @@
         </div>
       </div>
 
-      <!-- History subtab -->
       <div id="res-subtab-history" class="subtab-content">
         <div class="card">
           <div class="card-header"><span class="card-title">Reservation History</span><span class="badge badge-returned">Returned</span></div>
@@ -381,12 +364,11 @@
           <div id="resHistoryPagination"></div>
         </div>
       </div>
-    </div><!-- end tab-reservationLogs -->
+    </div>
 
 
     <!-- ══ TAB: TECH4ED ══ -->
     <div id="tab-tech4ed" class="tab-content">
-      <!-- Stat cards -->
       <div class="stats-grid stats-grid-3" style="max-width:600px;margin-bottom:16px;">
         <div class="stat-card green">
           <div class="stat-label">Active Sessions</div>
@@ -405,14 +387,12 @@
         </div>
       </div>
 
-      <!-- Subtab bar -->
       <div class="subtab-bar">
         <button class="subtab-btn active" data-subtab="entries" onclick="switchTech4EdSubTab('entries')">📋 Entries Log</button>
         <button class="subtab-btn" data-subtab="active"   onclick="switchTech4EdSubTab('active')">⏱ Active Sessions</button>
         <button class="subtab-btn" data-subtab="history"  onclick="switchTech4EdSubTab('history')">✅ Session History</button>
       </div>
 
-      <!-- Entries log subtab -->
       <div id="t4e-subtab-entries" class="subtab-content active">
         <div class="card">
           <div class="card-header">
@@ -434,7 +414,6 @@
         </div>
       </div>
 
-      <!-- Active sessions subtab -->
       <div id="t4e-subtab-active" class="subtab-content">
         <div class="card">
           <div class="card-header">
@@ -455,7 +434,6 @@
         </div>
       </div>
 
-      <!-- Session history subtab -->
       <div id="t4e-subtab-history" class="subtab-content">
         <div class="card">
           <div class="card-header">
@@ -471,9 +449,8 @@
           <div id="t4eHistoryPagination"></div>
         </div>
       </div>
-    </div><!-- end tab-tech4ed -->
-
-  </div><!-- .main-inner -->
+    </div>
+  </div>
 </main>
 
 
@@ -495,7 +472,7 @@
           <div class="form-group"><label class="form-label">Office *</label><select name="office_select" class="form-input" id="repairOfficeSelect" onchange="toggleOtherInput(this,'repairOfficeOther')"><option value="">Select office...</option></select><input type="text" name="office_other" class="form-input" id="repairOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/></div>
           <div class="form-group"><label class="form-label">Item Name *</label><input type="text" name="item_name" class="form-input" placeholder="e.g. Printer, Laptop"/></div>
           <div class="form-group"><label class="form-label">Model / Specs</label><input type="text" name="serial_specs" class="form-input" placeholder="e.g. L3210, Core i5 8GB"/></div>
-          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" value="1"/></div>
+          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" max="9999" value="1"/></div>
           <div class="form-group"><label class="form-label">Date Received *</label><input type="date" name="date_received" class="form-input" id="repairDateInput"/></div>
           <div class="form-group span-2"><label class="form-label">Received By *</label><select name="received_by_select" class="form-input" id="repairReceivedBySelect" onchange="toggleOjtInput(this,'repairReceivedByOjt')"><option value="">Select employee...</option></select><input type="text" name="received_by_ojt" class="form-input" id="repairReceivedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/></div>
           <div class="form-group span-2"><label class="form-label">Problem Description *</label><textarea name="problem_description" class="form-input" placeholder="Describe the issue in detail..."></textarea></div>
@@ -552,7 +529,7 @@
           <div class="form-group"><label class="form-label">Contact Number</label><input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/></div>
           <div class="form-group"><label class="form-label">Office *</label><select name="office_select" class="form-input" id="borrowOfficeSelect" onchange="toggleOtherInput(this,'borrowOfficeOther')"><option value="">Select office...</option></select><input type="text" name="office_other" class="form-input" id="borrowOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/></div>
           <div class="form-group"><label class="form-label">Item Borrowed *</label><input type="text" name="item_borrowed" class="form-input" placeholder="e.g. Laptop, Extension cord"/></div>
-          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" value="1"/></div>
+          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" max="9999" value="1"/></div>
           <div class="form-group"><label class="form-label">Date Borrowed *</label><input type="date" name="date_borrowed" class="form-input" id="borrowDateInput"/></div>
           <div class="form-group"><label class="form-label">Released By *</label><select name="released_by_select" class="form-input" id="borrowReleasedBySelect" onchange="toggleOjtInput(this,'borrowReleasedByOjt')"><option value="">Select employee...</option></select><input type="text" name="released_by_ojt" class="form-input" id="borrowReleasedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/></div>
         </div>
@@ -595,7 +572,7 @@
           <div class="form-group"><label class="form-label">Contact Number</label><input type="tel" name="contact_number" class="form-input" placeholder="e.g. 09171234567"/></div>
           <div class="form-group"><label class="form-label">Office *</label><select name="office_select" class="form-input" id="resOfficeSelect" onchange="toggleOtherInput(this,'resOfficeOther')"><option value="">Select office...</option></select><input type="text" name="office_other" class="form-input" id="resOfficeOther" placeholder="Type office name" style="display:none;margin-top:6px;"/></div>
           <div class="form-group"><label class="form-label">Item Name *</label><input type="text" name="item_name" class="form-input" placeholder="e.g. Projector, Camera"/></div>
-          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" value="1"/></div>
+          <div class="form-group"><label class="form-label">Quantity *</label><input type="number" name="quantity" class="form-input" min="1" max="9999" value="1"/></div>
           <div class="form-group"><label class="form-label">Reservation Date *</label><input type="date" name="reservation_date" class="form-input" id="resDateInput"/></div>
           <div class="form-group"><label class="form-label">Expected Return Date *</label><input type="date" name="expected_return_date" class="form-input" id="resExpectedReturnInput"/></div>
           <div class="form-group"><label class="form-label">Released By *</label><select name="released_by_select" class="form-input" id="resReleasedBySelect" onchange="toggleOjtInput(this,'resReleasedByOjt')"><option value="">Select employee...</option></select><input type="text" name="released_by_ojt" class="form-input" id="resReleasedByOjt" placeholder="Enter OJT trainee name" style="display:none;margin-top:6px;"/></div>
@@ -750,7 +727,6 @@
 <script src="js/tech4ed.js"></script>
 
 <script>
-  // Redirect to login if not authenticated
   if (!localStorage.getItem('token')) window.location.href = 'index.html';
 
   const username = localStorage.getItem('username') || 'Admin';
@@ -763,13 +739,11 @@
     window.location.href = 'index.html';
   }
 
-  // Pre-fill today's date into all date inputs
   document.getElementById('repairDateInput').value        = today();
   document.getElementById('borrowDateInput').value         = today();
   document.getElementById('resDateInput').value            = today();
   document.getElementById('resExpectedReturnInput').value  = today();
 
-  // Load dropdowns then open dashboard
   loadLookups().then(() => loadDashboard());
 </script>
 </body>
