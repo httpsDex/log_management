@@ -33,14 +33,26 @@ function renderDashboardStats(s) {
 }
 
 // ── Reservation Monitor ───────────────────────────────────────────────────────
-async function renderReservationMonitor() {
+// Tracks which month the calendar is showing (offset from current month)
+let _calMonthOffset = 0;
+let _reservationMonitorData = null;
+let _calSelectedDay = null; // null = show whole month, number = specific day
+
+async function renderReservationMonitor(monthOffset) {
+  if (monthOffset !== undefined) {
+    _calMonthOffset = monthOffset;
+    _calSelectedDay = null; // reset day selection when changing month
+  }
   const container = document.getElementById('reservation-monitor-section');
   if (!container) return;
 
-  // Fetch active + overdue reservations (no pagination limit needed for calendar)
-  const res = await API.getReservations({ status: 'Active', limit: 100, page: 1 });
-  if (!res?.ok) return;
-  const { data } = res.data;
+  // Only fetch data on first load or if not cached
+  if (_reservationMonitorData === null) {
+    const res = await API.getReservations({ status: 'Active', limit: 100, page: 1 });
+    if (!res?.ok) return;
+    _reservationMonitorData = res.data.data;
+  }
+  const data = _reservationMonitorData;
 
   if (data.length === 0) {
     container.innerHTML = `
@@ -60,9 +72,49 @@ async function renderReservationMonitor() {
   const today = new Date();
   today.setHours(0,0,0,0);
 
-  // Build calendar for current month — centered on today
-  const calHtml = buildReservationCalendar(data, today);
-  const tableHtml = buildReservationTable(data, today);
+  // Compute the display month based on offset
+  const displayDate = new Date(today.getFullYear(), today.getMonth() + _calMonthOffset, 1);
+  const dispYear = displayDate.getFullYear();
+  const dispMonth = displayDate.getMonth();
+
+  // Filter data for table based on selection
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let filteredData;
+  let filterLabel;
+
+  if (_calSelectedDay !== null) {
+    // Show only reservations active on the selected day
+    const selDate = new Date(dispYear, dispMonth, _calSelectedDay);
+    selDate.setHours(0,0,0,0);
+    filteredData = data.filter(r => {
+      const resDate = new Date(r.reservation_date); resDate.setHours(0,0,0,0);
+      const retDate = new Date(r.expected_return_date); retDate.setHours(0,0,0,0);
+      return resDate <= selDate && retDate >= selDate;
+    });
+    filterLabel = `${monthNames[dispMonth]} ${_calSelectedDay}, ${dispYear}`;
+  } else {
+    // Show only reservations that overlap with the displayed month
+    const monthStart = new Date(dispYear, dispMonth, 1);
+    const monthEnd   = new Date(dispYear, dispMonth + 1, 0);
+    filteredData = data.filter(r => {
+      const resDate = new Date(r.reservation_date); resDate.setHours(0,0,0,0);
+      const retDate = new Date(r.expected_return_date); retDate.setHours(0,0,0,0);
+      return resDate <= monthEnd && retDate >= monthStart;
+    });
+    filterLabel = `${monthNames[dispMonth]} ${dispYear}`;
+  }
+
+  // Build calendar for the display month
+  const calHtml = buildReservationCalendar(data, today, displayDate);
+  const tableHtml = buildReservationTable(filteredData, today);
+
+  const tableTitle = _calSelectedDay !== null
+    ? `Reservations on <strong style="color:var(--text);">${filterLabel}</strong>`
+    : `Reservations in <strong style="color:var(--text);">${filterLabel}</strong>`;
+
+  const clearBtn = _calSelectedDay !== null
+    ? `<button onclick="_calClearDayFilter()" style="font-size:.68rem;font-weight:600;color:var(--accent);background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:5px;padding:3px 9px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='rgba(59,130,246,0.1)'">✕ Show full month</button>`
+    : '';
 
   container.innerHTML = `
     <div class="card" style="margin-top:0;">
@@ -86,12 +138,16 @@ async function renderReservationMonitor() {
       <div style="display:grid;grid-template-columns:auto 1fr;gap:0;border-top:1px solid var(--border);">
 
         <!-- Calendar -->
-        <div style="padding:18px 20px;border-right:1px solid var(--border);min-width:260px;">
+        <div style="padding:18px 20px;border-right:1px solid var(--border);min-width:280px;">
           ${calHtml}
         </div>
 
         <!-- Table -->
         <div style="overflow-x:auto;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap;">
+            <span style="font-size:.75rem;color:var(--text2);">${tableTitle} <span style="color:var(--muted);">(${filteredData.length} record${filteredData.length !== 1 ? 's' : ''})</span></span>
+            ${clearBtn}
+          </div>
           <table class="data-table" style="min-width:520px;">
             <thead>
               <tr>
@@ -113,11 +169,13 @@ async function renderReservationMonitor() {
     </div>`;
 }
 
-function buildReservationCalendar(data, today) {
-  const year  = today.getFullYear();
-  const month = today.getMonth();
+function buildReservationCalendar(data, today, displayDate) {
+  const year  = displayDate.getFullYear();
+  const month = displayDate.getMonth();
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  const isCurrentMonth = (year === today.getFullYear() && month === today.getMonth());
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -131,7 +189,7 @@ function buildReservationCalendar(data, today) {
     expRetDate.setHours(0,0,0,0);
     const isOverdue  = expRetDate < today;
 
-    // Mark all days from reservation to expected return in current month
+    // Mark all days from reservation to expected return in the display month
     const start = new Date(Math.max(resDate, new Date(year, month, 1)));
     const end   = new Date(Math.min(retDate, new Date(year, month + 1, 0)));
 
@@ -144,10 +202,29 @@ function buildReservationCalendar(data, today) {
     }
   });
 
+  // Month navigation header
   let html = `
-    <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
-      <span>${monthNames[month]} ${year}</span>
-      <span style="font-size:.65rem;font-weight:500;color:var(--muted);">Current Month</span>
+    <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <button
+        onclick="_calNavMonthOffset(${_calMonthOffset - 1})"
+        style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:6px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s;"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'"
+        onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'"
+        title="Previous month">
+        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <span style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+        <span>${monthNames[month]} ${year}</span>
+        ${!isCurrentMonth ? `<button onclick="_calNavMonthOffset(0)" style="font-size:.55rem;font-weight:600;color:var(--accent);background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:4px;padding:1px 6px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='rgba(59,130,246,0.1)'">Back to Today</button>` : `<span style="font-size:.58rem;font-weight:500;color:var(--muted);">Current Month</span>`}
+      </span>
+      <button
+        onclick="_calNavMonthOffset(${_calMonthOffset + 1})"
+        style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:6px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s;"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'"
+        onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'"
+        title="Next month">
+        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+      </button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px;">`;
 
@@ -163,7 +240,7 @@ function buildReservationCalendar(data, today) {
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
-    const isToday   = day === today.getDate();
+    const isToday   = isCurrentMonth && day === today.getDate();
     const events    = dayMap[day] || [];
     const hasEvents = events.length > 0;
     const hasOverdue = events.some(e => e.isOverdue);
@@ -197,7 +274,21 @@ function buildReservationCalendar(data, today) {
     const tooltipExtra = events.length > 3 ? ` +${events.length - 3} more` : '';
     const titleAttr = hasEvents ? `title="${tooltipItems}${tooltipExtra}"` : '';
 
-    html += `<div ${titleAttr} style="aspect-ratio:1;border-radius:5px;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:${isToday ? '700' : hasEvents ? '600' : '400'};color:${color};position:relative;cursor:${hasEvents ? 'pointer' : 'default'};transition:all 0.15s;">
+    const isSelected = (_calSelectedDay === day);
+
+    // Selected day overrides styling
+    if (isSelected && !isToday) {
+      bg = 'var(--accent2)';
+      color = 'white';
+      border = '1px solid var(--accent)';
+    }
+
+    const clickHandler = hasEvents ? `onclick="_calSelectDay(${day})"` : '';
+    const hoverStyle = hasEvents && !isToday && !isSelected
+      ? `onmouseover="this.style.transform='scale(1.12)';this.style.zIndex='1'" onmouseout="this.style.transform='scale(1)';this.style.zIndex=''"` 
+      : '';
+
+    html += `<div ${titleAttr} ${clickHandler} ${hoverStyle} style="aspect-ratio:1;border-radius:5px;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:${isToday || isSelected ? '700' : hasEvents ? '600' : '400'};color:${color};position:relative;cursor:${hasEvents ? 'pointer' : 'default'};transition:all 0.15s;${isSelected ? 'box-shadow:0 0 0 2px var(--accent),0 0 8px var(--accent-glow);' : ''}">
       ${day}
       ${dot}
     </div>`;
@@ -228,8 +319,25 @@ function buildReservationCalendar(data, today) {
   return html;
 }
 
+// Global helpers so inline onclick can call them
+function _calNavMonthOffset(offset) {
+  _reservationMonitorData = null; // reset cache so fresh data is fetched
+  renderReservationMonitor(offset);
+}
+
+function _calSelectDay(day) {
+  // Toggle: clicking the same day again clears the filter
+  _calSelectedDay = (_calSelectedDay === day) ? null : day;
+  renderReservationMonitor();
+}
+
+function _calClearDayFilter() {
+  _calSelectedDay = null;
+  renderReservationMonitor();
+}
+
 function buildReservationTable(data, today) {
-  if (!data.length) return `<tr><td colspan="9"><div class="empty-state"><p>No active reservations</p></div></td></tr>`;
+  if (!data.length) return `<tr><td colspan="9"><div class="empty-state"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><p>No reservations for this ${_calSelectedDay !== null ? 'date' : 'month'}</p></div></td></tr>`;
 
   return data.map(r => {
     const expDate = new Date(r.expected_return_date);
@@ -470,11 +578,16 @@ function drawBarGroupChart(canvas, { labels, datasets }) {
   const groupW  = chartW / labels.length;
   const barW    = (groupW - 8) / datasets.length;
 
-  // Horizontal grid lines
+  // Horizontal grid lines — compute smart ticks with no duplicates
+  // When maxVal is small (e.g. 1-4), cap tick count to avoid e.g. "1,1,0,0"
   ctx.strokeStyle = 'rgba(26,38,64,0.8)';
   ctx.lineWidth   = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = pad.top + chartH - (i / 4) * chartH;
+  const tickCount = Math.min(4, Math.ceil(maxVal));
+  for (let i = 0; i <= tickCount; i++) {
+    const fraction = i / tickCount;
+    const y = pad.top + chartH - fraction * chartH;
+    const tickVal = maxVal * fraction;
+    const tickLabel = (tickVal % 1 === 0) ? String(Math.round(tickVal)) : tickVal.toFixed(1);
     ctx.beginPath();
     ctx.moveTo(pad.left, y);
     ctx.lineTo(pad.left + chartW, y);
@@ -482,7 +595,7 @@ function drawBarGroupChart(canvas, { labels, datasets }) {
     ctx.fillStyle = '#4d6480';
     ctx.font = `${Math.round(w * 0.025 + 8)}px DM Mono, monospace`;
     ctx.textAlign = 'right';
-    ctx.fillText(Math.round((i / 4) * maxVal), pad.left - 4, y + 4);
+    ctx.fillText(tickLabel, pad.left - 4, y + 4);
   }
 
   // Bars

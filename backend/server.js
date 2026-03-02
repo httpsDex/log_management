@@ -88,6 +88,16 @@ const query = (sql, params) =>
     db.query(sql, params, (err, results) => err ? reject(err) : resolve(results))
   );
 
+// Auto-mark overdue reservations — call before any read that checks status
+async function markOverdueReservations() {
+  await query(
+    `UPDATE reservations SET status = 'Overdue', updated_at = NOW()
+     WHERE status = 'Active'
+       AND expected_return_date < CURDATE()`,
+    []
+  );
+}
+
 // ── Auth middleware ───────────────────────────────────────────────────────────
 const auth = (req, res, next) => {
   const token = (req.headers['authorization'] || '').split(' ')[1];
@@ -164,6 +174,9 @@ app.get('/api/employees', auth, async (req, res) => {
 // ── DASHBOARD STATS ───────────────────────────────────────────────────────────
 app.get('/api/stats', auth, async (req, res) => {
   try {
+    // Auto-update overdue reservations before reading stats
+    await markOverdueReservations();
+
     const [repairStats] = await query(`
       SELECT
         COUNT(*) AS total,
@@ -180,12 +193,14 @@ app.get('/api/stats', auth, async (req, res) => {
         SUM(status = 'Returned') AS returned
       FROM borrowed_items`, []);
 
+    await markOverdueReservations();
+
     const [resStats] = await query(`
       SELECT
         COUNT(*) AS total,
-        SUM(status = 'Active') AS active,
+        SUM(status = 'Returned') AS returned,
         SUM(status = 'Overdue') AS overdue,
-        SUM(status = 'Returned') AS returned
+        SUM(status = 'Active') AS active
       FROM reservations`, []);
 
     const [t4eStats] = await query(`
@@ -434,6 +449,9 @@ app.delete('/api/borrowed/:id', auth, async (req, res) => {
 // ── RESERVATIONS ──────────────────────────────────────────────────────────────
 app.get('/api/reservations', auth, async (req, res) => {
   try {
+    // Auto-update overdue reservations before reading
+    await markOverdueReservations();
+
     const { status } = req.query;
     let baseSQL  = 'SELECT * FROM reservations';
     let countSQL = 'SELECT COUNT(*) AS total FROM reservations';
