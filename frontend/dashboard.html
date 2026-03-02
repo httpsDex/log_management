@@ -17,6 +17,17 @@
     .detail-value.mono { font-family:'DM Mono',monospace; font-size:.78rem; color:var(--text2); }
     .detail-value.long { font-size:.82rem; line-height:1.5; color:var(--text2); background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; margin-top:2px; }
     .detail-span-2 { grid-column:span 2; }
+
+    /* Reservation monitor responsive */
+    @media (max-width: 860px) {
+      #reservation-monitor-section .card > div[style*="grid-template-columns"] {
+        display: block !important;
+      }
+      #reservation-monitor-section .card > div[style*="grid-template-columns"] > div:first-child {
+        border-right: none !important;
+        border-bottom: 1px solid var(--border);
+      }
+    }
   </style>
 </head>
 <body>
@@ -177,6 +188,17 @@
         <div class="stat-card blue"   style="padding:14px 18px;"><div class="stat-label">Items Returned</div><div class="stat-value" style="color:#60a5fa;font-size:1.5rem;" id="ds-returned">—</div></div>
         <div class="stat-card"        style="padding:14px 18px;"><div class="stat-label">Active Reservations</div><div class="stat-value" style="color:#34d399;font-size:1.5rem;" id="ds-reservations">—</div></div>
         <div class="stat-card"        style="padding:14px 18px;"><div class="stat-label">Tech4Ed Today</div><div class="stat-value" style="color:#818cf8;font-size:1.5rem;" id="ds-tech4ed">—</div></div>
+      </div>
+
+      <!-- ══ RESERVATION MONITOR — placed directly under stats cards ══ -->
+      <div id="reservation-monitor-section" style="margin-bottom:16px;">
+        <!-- Populated by renderReservationMonitor() in dashboard-tab.js -->
+        <div class="card" style="margin-top:0;">
+          <div class="card-header">
+            <span class="card-title">📅 Active Reservations Monitor</span>
+          </div>
+          <div style="padding:32px 20px;text-align:center;color:var(--muted);font-size:.8rem;">Loading reservations...</div>
+        </div>
       </div>
 
       <div class="dashboard-grid">
@@ -783,13 +805,11 @@
     const label   = isLight ? 'Light Mode' : 'Dark Mode';
     const mLabel  = isLight ? 'Light' : 'Dark';
 
-    // Update desktop toggle
     const dIcon = document.getElementById('desktopThemeIcon');
     const dLabel = document.getElementById('desktopThemeLabel');
     if (dIcon)  dIcon.innerHTML = iconSVG;
     if (dLabel) dLabel.textContent = label;
 
-    // Update mobile toggle
     const mIcon = document.getElementById('mobileThemeIcon');
     const mLabelEl = document.getElementById('mobileThemeLabel');
     if (mIcon)    mIcon.innerHTML = iconSVG;
@@ -801,7 +821,6 @@
     applyTheme(current === 'dark' ? 'light' : 'dark');
   }
 
-  // Load saved theme preference
   const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
   applyTheme(savedTheme);
 
@@ -816,7 +835,6 @@
     localStorage.setItem(SIDEBAR_KEY, isCollapsed ? '1' : '0');
   }
 
-  // Restore sidebar state
   if (window.innerWidth > 768) {
     const wasCollapsed = localStorage.getItem(SIDEBAR_KEY) === '1';
     if (wasCollapsed) {

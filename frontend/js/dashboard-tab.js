@@ -12,6 +12,7 @@ async function loadDashboard() {
   renderRepairTypeChart(s.repairs);
   renderMonthlyTrendChart(s.monthly);
   renderBorrowStatusChart(s.borrows);
+  await renderReservationMonitor();
 }
 
 // ── Stat cards ────────────────────────────────────────────────────────────────
@@ -29,6 +30,237 @@ function renderDashboardStats(s) {
   setC('ds-returned',     s.borrows.returned);
   setC('ds-reservations', Number(s.reservations.active) + Number(s.reservations.overdue));
   setC('ds-tech4ed',      s.tech4ed.today);
+}
+
+// ── Reservation Monitor ───────────────────────────────────────────────────────
+async function renderReservationMonitor() {
+  const container = document.getElementById('reservation-monitor-section');
+  if (!container) return;
+
+  // Fetch active + overdue reservations (no pagination limit needed for calendar)
+  const res = await API.getReservations({ status: 'Active', limit: 100, page: 1 });
+  if (!res?.ok) return;
+  const { data } = res.data;
+
+  if (data.length === 0) {
+    container.innerHTML = `
+      <div class="card" style="margin-top:0;">
+        <div class="card-header">
+          <span class="card-title">📅 Active Reservations Monitor</span>
+          <span class="card-sub">No active reservations</span>
+        </div>
+        <div class="empty-state" style="padding:32px 20px;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <p>No active reservations to display</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  // Build calendar for current month — centered on today
+  const calHtml = buildReservationCalendar(data, today);
+  const tableHtml = buildReservationTable(data, today);
+
+  container.innerHTML = `
+    <div class="card" style="margin-top:0;">
+      <div class="card-header" style="padding:16px 20px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:30px;height:30px;border-radius:8px;background:rgba(59,130,246,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="15" height="15" fill="none" stroke="#60a5fa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <div>
+            <div class="card-title">Active Reservations Monitor</div>
+            <div class="card-sub">${data.length} active · calendar view + details</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:.68rem;color:var(--text2);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(16,185,129,0.5);display:inline-block;border:1px solid #10b981;"></span>Reserved</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:.68rem;color:var(--text2);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(239,68,68,0.5);display:inline-block;border:1px solid #ef4444;"></span>Overdue</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:.68rem;color:var(--text2);"><span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block;"></span>Today</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:0;border-top:1px solid var(--border);">
+
+        <!-- Calendar -->
+        <div style="padding:18px 20px;border-right:1px solid var(--border);min-width:260px;">
+          ${calHtml}
+        </div>
+
+        <!-- Table -->
+        <div style="overflow-x:auto;">
+          <table class="data-table" style="min-width:520px;">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Borrower</th>
+                <th>Item</th>
+                <th>Office</th>
+                <th>Qty</th>
+                <th>Reserved Date</th>
+                <th>Expected Return</th>
+                <th>Released By</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>${tableHtml}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildReservationCalendar(data, today) {
+  const year  = today.getFullYear();
+  const month = today.getMonth();
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Build a map of day → events for this month
+  const dayMap = {};
+  data.forEach(r => {
+    const resDate    = new Date(r.reservation_date);
+    const retDate    = new Date(r.expected_return_date);
+    const expRetDate = new Date(r.expected_return_date);
+    expRetDate.setHours(0,0,0,0);
+    const isOverdue  = expRetDate < today;
+
+    // Mark all days from reservation to expected return in current month
+    const start = new Date(Math.max(resDate, new Date(year, month, 1)));
+    const end   = new Date(Math.min(retDate, new Date(year, month + 1, 0)));
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      if (d.getMonth() === month && d.getFullYear() === year) {
+        const day = d.getDate();
+        if (!dayMap[day]) dayMap[day] = [];
+        dayMap[day].push({ id: r.id, item: r.item_name, borrower: r.borrower_name, isOverdue });
+      }
+    }
+  });
+
+  let html = `
+    <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+      <span>${monthNames[month]} ${year}</span>
+      <span style="font-size:.65rem;font-weight:500;color:var(--muted);">Current Month</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px;">`;
+
+  dayNames.forEach(d => {
+    html += `<div style="text-align:center;font-size:.6rem;font-weight:700;color:var(--muted);padding:2px 0;">${d}</div>`;
+  });
+
+  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">`;
+
+  // Empty cells for days before the 1st
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div style="aspect-ratio:1;"></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const isToday   = day === today.getDate();
+    const events    = dayMap[day] || [];
+    const hasEvents = events.length > 0;
+    const hasOverdue = events.some(e => e.isOverdue);
+
+    let bg = 'transparent';
+    let border = '1px solid transparent';
+    let color = 'var(--text2)';
+    let dot = '';
+
+    if (isToday) {
+      bg = 'var(--accent)';
+      color = 'white';
+      border = '1px solid var(--accent)';
+    } else if (hasOverdue) {
+      bg = 'rgba(239,68,68,0.15)';
+      border = '1px solid rgba(239,68,68,0.35)';
+      color = '#f87171';
+    } else if (hasEvents) {
+      bg = 'rgba(16,185,129,0.12)';
+      border = '1px solid rgba(16,185,129,0.3)';
+      color = '#34d399';
+    }
+
+    if (hasEvents && !isToday) {
+      const dotColor = hasOverdue ? '#ef4444' : '#10b981';
+      dot = `<div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:${dotColor};"></div>`;
+    }
+
+    // Tooltip content
+    const tooltipItems = events.slice(0, 3).map(e => e.item).join(', ');
+    const tooltipExtra = events.length > 3 ? ` +${events.length - 3} more` : '';
+    const titleAttr = hasEvents ? `title="${tooltipItems}${tooltipExtra}"` : '';
+
+    html += `<div ${titleAttr} style="aspect-ratio:1;border-radius:5px;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:${isToday ? '700' : hasEvents ? '600' : '400'};color:${color};position:relative;cursor:${hasEvents ? 'pointer' : 'default'};transition:all 0.15s;">
+      ${day}
+      ${dot}
+    </div>`;
+  }
+
+  html += `</div>`;
+
+  // Mini summary below calendar
+  const totalActive  = data.filter(r => { const d = new Date(r.expected_return_date); d.setHours(0,0,0,0); return d >= today; }).length;
+  const totalOverdue = data.filter(r => { const d = new Date(r.expected_return_date); d.setHours(0,0,0,0); return d < today; }).length;
+
+  html += `
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Active</span>
+        <span style="font-size:1.1rem;font-weight:700;color:#34d399;">${totalActive}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Overdue</span>
+        <span style="font-size:1.1rem;font-weight:700;color:#f87171;">${totalOverdue}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Total</span>
+        <span style="font-size:1.1rem;font-weight:700;color:var(--text);">${data.length}</span>
+      </div>
+    </div>`;
+
+  return html;
+}
+
+function buildReservationTable(data, today) {
+  if (!data.length) return `<tr><td colspan="9"><div class="empty-state"><p>No active reservations</p></div></td></tr>`;
+
+  return data.map(r => {
+    const expDate = new Date(r.expected_return_date);
+    expDate.setHours(0,0,0,0);
+    const isOverdue = expDate < today;
+
+    // Days until return (or days overdue)
+    const diffMs   = expDate.getTime() - today.getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    let dueLabel = '';
+    if (diffDays === 0)        dueLabel = `<span style="font-size:.62rem;color:#fbbf24;font-weight:600;">Due today</span>`;
+    else if (diffDays > 0)     dueLabel = `<span style="font-size:.62rem;color:var(--muted);">in ${diffDays}d</span>`;
+    else                       dueLabel = `<span style="font-size:.62rem;color:#f87171;font-weight:600;">${Math.abs(diffDays)}d overdue</span>`;
+
+    const rowStyle = isOverdue ? 'background:rgba(239,68,68,0.04);' : '';
+
+    return `<tr style="${rowStyle}">
+      <td class="td-mono">#${r.id}</td>
+      <td class="td-name">${esc(r.borrower_name)}</td>
+      <td>${esc(r.item_name)}</td>
+      <td style="font-size:.75rem;">${esc(r.office)}</td>
+      <td>${r.quantity}</td>
+      <td class="td-mono">${fmtDate(r.reservation_date)}</td>
+      <td style="white-space:nowrap;">
+        <div class="td-mono" style="${isOverdue ? 'color:#f87171;font-weight:600;' : ''}">${fmtDate(r.expected_return_date)}</div>
+        <div>${dueLabel}</div>
+      </td>
+      <td style="font-size:.75rem;">${esc(r.released_by)}</td>
+      <td>${badge(isOverdue ? 'Overdue' : r.status)}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ── Donut: repair status breakdown ───────────────────────────────────────────
