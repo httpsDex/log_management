@@ -4,7 +4,7 @@
   "description": "IT Office Work Logging Management System",
   "main": "backend/server.js",
   "scripts": {
-    "start": "node backend/server.js",
+    "start": "nodemon backend/server.js",
     "dev": "nodemon backend/server.js"
   },
   "dependencies": {
