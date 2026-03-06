@@ -43,7 +43,6 @@ const allowedOrigins = [
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. same-origin, Postman during dev)
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error('Not allowed by CORS'));
   },
@@ -149,13 +148,28 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   if (!username || !password)
     return res.status(400).json({ message: 'Username and password are required' });
   try {
-    // BINARY makes the username comparison case-sensitive
     const rows = await query('SELECT * FROM users WHERE BINARY username = ? LIMIT 1', [username]);
     if (!rows.length) return res.status(401).json({ message: 'Invalid credentials' });
     const match = await bcrypt.compare(password, rows[0].password);
     if (!match) return res.status(401).json({ message: 'Invalid credentials' });
     const token = jwt.sign({ id: rows[0].id, username: rows[0].username }, JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, username: rows[0].username });
+  } catch (err) {
+    serverError(res, err);
+  }
+});
+
+// ── VERIFY PASSWORD (for settings access) ────────────────────────────────────
+app.post('/api/verify-password', auth, async (req, res) => {
+  const { password } = req.body;
+  if (!password?.trim())
+    return res.status(400).json({ message: 'Password required.' });
+  try {
+    const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+    if (!rows.length) return res.status(401).json({ message: 'User not found.' });
+    const match = await bcrypt.compare(password, rows[0].password);
+    if (!match) return res.status(401).json({ message: 'Incorrect password.' });
+    res.json({ ok: true });
   } catch (err) {
     serverError(res, err);
   }
@@ -172,10 +186,104 @@ app.get('/api/employees', auth, async (req, res) => {
   catch (err) { serverError(res, err); }
 });
 
+// ── OFFICES CRUD (settings) ───────────────────────────────────────────────────
+app.post('/api/offices', auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ message: 'Office name is required.' });
+  try {
+    const result = await query('INSERT INTO offices (name) VALUES (?)', [name.trim()]);
+    res.status(201).json({ message: 'Office added.', id: result.insertId });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Office already exists.' });
+    serverError(res, err);
+  }
+});
+
+app.patch('/api/offices/:id', auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ message: 'Office name is required.' });
+  try {
+    const result = await query('UPDATE offices SET name = ? WHERE id = ?', [name.trim(), req.params.id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Office not found.' });
+    res.json({ message: 'Office updated.' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Office name already exists.' });
+    serverError(res, err);
+  }
+});
+
+app.delete('/api/offices/:id', auth, async (req, res) => {
+  const { admin_password } = req.body;
+  if (!admin_password?.trim()) return res.status(400).json({ message: 'Admin password required.' });
+  try {
+    const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+    if (!rows.length) return res.status(401).json({ message: 'User not found.' });
+    const match = await bcrypt.compare(admin_password, rows[0].password);
+    if (!match) return res.status(401).json({ message: 'Incorrect password.' });
+    const result = await query('DELETE FROM offices WHERE id = ?', [req.params.id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Office not found.' });
+    res.json({ message: 'Office deleted.' });
+  } catch (err) {
+    serverError(res, err);
+  }
+});
+
+// ── EMPLOYEES CRUD (settings) ─────────────────────────────────────────────────
+app.post('/api/employees', auth, async (req, res) => {
+  const { full_name } = req.body;
+  if (!full_name?.trim()) return res.status(400).json({ message: 'Employee name is required.' });
+  try {
+    const result = await query('INSERT INTO employees (full_name, is_active) VALUES (?, 1)', [full_name.trim()]);
+    res.status(201).json({ message: 'Employee added.', id: result.insertId });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Employee already exists.' });
+    serverError(res, err);
+  }
+});
+
+app.patch('/api/employees/:id', auth, async (req, res) => {
+  const { full_name, is_active } = req.body;
+  try {
+    if (full_name !== undefined) {
+      if (!full_name?.trim()) return res.status(400).json({ message: 'Employee name is required.' });
+      const result = await query('UPDATE employees SET full_name = ? WHERE id = ?', [full_name.trim(), req.params.id]);
+      if (result.affectedRows === 0) return res.status(404).json({ message: 'Employee not found.' });
+    }
+    if (is_active !== undefined) {
+      await query('UPDATE employees SET is_active = ? WHERE id = ?', [is_active ? 1 : 0, req.params.id]);
+    }
+    res.json({ message: 'Employee updated.' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Employee name already exists.' });
+    serverError(res, err);
+  }
+});
+
+app.delete('/api/employees/:id', auth, async (req, res) => {
+  const { admin_password } = req.body;
+  if (!admin_password?.trim()) return res.status(400).json({ message: 'Admin password required.' });
+  try {
+    const rows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.user.id]);
+    if (!rows.length) return res.status(401).json({ message: 'User not found.' });
+    const match = await bcrypt.compare(admin_password, rows[0].password);
+    if (!match) return res.status(401).json({ message: 'Incorrect password.' });
+    const result = await query('DELETE FROM employees WHERE id = ?', [req.params.id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Employee not found.' });
+    res.json({ message: 'Employee deleted.' });
+  } catch (err) {
+    serverError(res, err);
+  }
+});
+
+// Get all employees including inactive (for settings management)
+app.get('/api/employees/all', auth, async (req, res) => {
+  try { res.json(await query('SELECT * FROM employees ORDER BY full_name ASC', [])); }
+  catch (err) { serverError(res, err); }
+});
+
 // ── DASHBOARD STATS ───────────────────────────────────────────────────────────
 app.get('/api/stats', auth, async (req, res) => {
   try {
-    // Auto-update overdue reservations before reading stats
     await markOverdueReservations();
 
     const [repairStats] = await query(`
@@ -305,23 +413,54 @@ app.post('/api/repairs', auth, async (req, res) => {
   }
 });
 
+// Update repair condition — now includes repair_date, locks record after update
 app.patch('/api/repairs/:id/condition', auth, async (req, res) => {
-  const { repair_condition, repaired_by, repair_comment } = req.body;
+  const { repair_condition, repaired_by, repair_comment, repair_date } = req.body;
   if (!['Fixed', 'Unserviceable'].includes(repair_condition))
     return res.status(400).json({ message: 'repair_condition must be Fixed or Unserviceable' });
   if (!repaired_by?.trim())
     return res.status(400).json({ message: 'repaired_by is required' });
 
-  const now = moment().format('YYYY-MM-DD HH:mm:ss');
+  // Check if repair condition is already set (locked)
   try {
+    const existing = await query('SELECT repair_condition FROM repairs WHERE id = ?', [req.params.id]);
+    if (!existing.length) return res.status(404).json({ message: 'Record not found.' });
+    if (existing[0].repair_condition) {
+      return res.status(400).json({ message: 'Repair condition already set and cannot be changed.' });
+    }
+  } catch (err) {
+    return serverError(res, err);
+  }
+
+  const usedRepairDate = repair_date || moment().format('YYYY-MM-DD');
+  const now = moment().format('YYYY-MM-DD HH:mm:ss');
+
+  try {
+    // Check if repairs table has repair_date column, add if missing
     const result = await query(
-      `UPDATE repairs SET repair_condition=?, repaired_by=?, repair_comment=?, updated_at=? WHERE id=? AND status='Pending'`,
-      [repair_condition, repaired_by, repair_comment || null, now, req.params.id]
+      `UPDATE repairs SET repair_condition=?, repaired_by=?, repair_comment=?, repair_date=?, updated_at=? WHERE id=? AND status='Pending' AND repair_condition IS NULL`,
+      [repair_condition, repaired_by, repair_comment || null, usedRepairDate, now, req.params.id]
     );
     if (result.affectedRows === 0)
-      return res.status(404).json({ message: 'Record not found or already released.' });
+      return res.status(404).json({ message: 'Record not found or already has a condition set.' });
     res.json({ message: `Condition updated to ${repair_condition}` });
   } catch (err) {
+    // If repair_date column doesn't exist, fall back without it
+    if (err.code === 'ER_BAD_FIELD_ERROR') {
+      try {
+        // Add the column first
+        await query(`ALTER TABLE repairs ADD COLUMN repair_date date DEFAULT NULL AFTER repair_comment`, []);
+        const result2 = await query(
+          `UPDATE repairs SET repair_condition=?, repaired_by=?, repair_comment=?, repair_date=?, updated_at=? WHERE id=? AND status='Pending' AND repair_condition IS NULL`,
+          [repair_condition, repaired_by, repair_comment || null, usedRepairDate, now, req.params.id]
+        );
+        if (result2.affectedRows === 0)
+          return res.status(404).json({ message: 'Record not found or already has a condition set.' });
+        return res.json({ message: `Condition updated to ${repair_condition}` });
+      } catch (err2) {
+        return serverError(res, err2);
+      }
+    }
     serverError(res, err);
   }
 });
@@ -450,7 +589,6 @@ app.delete('/api/borrowed/:id', auth, async (req, res) => {
 // ── RESERVATIONS ──────────────────────────────────────────────────────────────
 app.get('/api/reservations', auth, async (req, res) => {
   try {
-    // Auto-update overdue reservations before reading
     await markOverdueReservations();
 
     const { status } = req.query;
@@ -500,6 +638,58 @@ app.post('/api/reservations', auth, async (req, res) => {
       [borrower_name, contactValue, office, item_name, quantity, reservation_date, expected_return_date, released_by, now, now]
     );
     res.status(201).json({ message: 'Reservation created', id: result.insertId });
+  } catch (err) {
+    serverError(res, err);
+  }
+});
+
+// Process reservation return — creates a completed borrow entry directly in borrowed_items
+app.post('/api/reservations/:id/return-as-borrow', auth, async (req, res) => {
+  const { returned_by, received_by, return_date, comments } = req.body;
+  if (!returned_by?.trim()) return res.status(400).json({ message: 'returned_by is required' });
+  if (!received_by?.trim()) return res.status(400).json({ message: 'received_by is required' });
+
+  const returnDate = return_date || moment().format('YYYY-MM-DD');
+  const now        = moment().format('YYYY-MM-DD HH:mm:ss');
+
+  try {
+    // Fetch the reservation
+    const reservations = await query('SELECT * FROM reservations WHERE id = ? AND status IN (\'Active\',\'Overdue\')', [req.params.id]);
+    if (!reservations.length)
+      return res.status(404).json({ message: 'Reservation not found or already returned.' });
+
+    const r = reservations[0];
+
+    // Insert into borrowed_items as a completed (Returned) entry
+    const result = await query(
+      `INSERT INTO borrowed_items 
+        (borrower_name, contact_number, office, item_borrowed, quantity, released_by, date_borrowed, 
+         returned_by, received_by, return_date, comments, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Returned', ?, ?)`,
+      [
+        r.borrower_name,
+        r.contact_number,
+        r.office,
+        r.item_name,
+        r.quantity,
+        r.released_by,
+        r.reservation_date,
+        returned_by,
+        received_by,
+        returnDate,
+        comments || '',
+        now,
+        now
+      ]
+    );
+
+    // Mark reservation as Returned
+    await query(
+      `UPDATE reservations SET returned_by=?, received_by=?, actual_return_date=?, comments=?, status='Returned', updated_at=? WHERE id=?`,
+      [returned_by, received_by, returnDate, comments || '', now, req.params.id]
+    );
+
+    res.status(201).json({ message: 'Reservation returned and logged in borrow history.', borrow_id: result.insertId });
   } catch (err) {
     serverError(res, err);
   }

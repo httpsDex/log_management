@@ -183,12 +183,13 @@ function openRepairDetail(id) {
 
 // ── Update status modal ───────────────────────────────────────────────────────
 function openUpdateStatus(id) {
-  document.getElementById('updateRepairId').value = id;
-  document.getElementById('updateStatus').value   = 'Fixed';
+  document.getElementById('updateRepairId').value        = id;
+  document.getElementById('updateStatus').value          = 'Fixed';
+  document.getElementById('updateRepairDate').value      = today();
   document.getElementById('updateRepairedBySelect').value = '';
   document.getElementById('updateRepairedByOjt').style.display = 'none';
-  document.getElementById('updateRepairedByOjt').value = '';
-  document.getElementById('repairComment').value  = '';
+  document.getElementById('updateRepairedByOjt').value   = '';
+  document.getElementById('repairComment').value         = '';
   clearAlert('updateStatusAlert');
   openModal('updateStatusModal');
 }
@@ -196,13 +197,15 @@ function openUpdateStatus(id) {
 async function submitUpdateStatus() {
   const id               = document.getElementById('updateRepairId').value;
   const repair_condition = document.getElementById('updateStatus').value;
+  const repair_date      = document.getElementById('updateRepairDate').value;
   const repair_comment   = document.getElementById('repairComment').value.trim();
   const repaired_by      = resolveSelectValue(
     document.getElementById('updateRepairedBySelect'), 'updateRepairedByOjt', '', 'updateRepairedByOjt'
   );
-  if (!repaired_by) { showAlert('updateStatusAlert', 'Please select or enter who repaired the item.'); return; }
+  if (!repaired_by)  { showAlert('updateStatusAlert', 'Please select or enter who repaired the item.'); return; }
+  if (!repair_date)  { showAlert('updateStatusAlert', 'Please enter the repair date.'); return; }
 
-  const res = await API.updateRepairCondition(id, { repair_condition, repaired_by, repair_comment });
+  const res = await API.updateRepairCondition(id, { repair_condition, repaired_by, repair_comment, repair_date });
   if (!res) return;
   if (res.ok) { closeModal('updateStatusModal'); loadRepairPending(repairPages.pending); loadRepairReady(1); }
   else showAlert('updateStatusAlert', res.data.message || 'Failed to update.');

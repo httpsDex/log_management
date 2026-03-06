@@ -1,163 +1,102 @@
-// ── Reservations module — subtabs: Active | History ──────────────────────────
+// ── Reservations module — dashboard monitor & return-as-borrow flow ───────────
 
-const resPages = { active: 1, history: 1 };
-const RES_LIMIT = 15;
+// ── Load reservation monitor (called from dashboard-tab.js) ───────────────────
+async function loadReservationMonitor() {
+  const section = document.getElementById('reservation-monitor-section');
+  if (!section) return;
 
-let _reservationHistoryCache = [];
+  const card = section.querySelector('.card');
 
-// ── Load functions ────────────────────────────────────────────────────────────
+  const headerHTML = `
+    <div class="card-header">
+      <span class="card-title">📅 Active Reservations Monitor</span>
+      <button class="btn btn-primary btn-sm" onclick="openNewReservation()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add Reservation
+      </button>
+    </div>
+  `;
 
-async function loadReservationsActive(page = 1) {
-  resPages.active = page;
-  const res = await API.getReservations({ status: 'Active', page, limit: RES_LIMIT });
-  if (!res?.ok) return;
-  const { data, total, totalPages } = res.data;
+  try {
+    const res = await API.getReservations({ status: 'Active', limit: 100 });
+    if (!res?.ok) {
+      card.innerHTML = headerHTML + `<div style="padding:32px 20px;text-align:center;color:var(--danger);font-size:.8rem;">Failed to load reservations.</div>`;
+      return;
+    }
 
-  document.getElementById('pendingReservationBody').innerHTML = data.length === 0
-    ? emptyState('No active reservations', 10)
-    : data.map(r => {
-        const isOverdue = r.expected_return_date && new Date(r.expected_return_date) < new Date() && r.status !== 'Returned';
-        return `<tr>
+    const rows = res.data.data || [];
+
+    if (!rows.length) {
+      card.innerHTML = headerHTML + `<div style="padding:32px 20px;text-align:center;color:var(--muted);font-size:.8rem;">No active reservations.</div>`;
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const tableRows = rows.map(r => {
+      const isOverdue   = r.status === 'Overdue' || r.expected_return_date < todayStr;
+      const statusBadge = isOverdue
+        ? `<span class="badge badge-overdue">Overdue</span>`
+        : `<span class="badge badge-active">Active</span>`;
+      return `
+        <tr>
           <td class="td-mono">#${r.id}</td>
           <td class="td-name">${esc(r.borrower_name)}</td>
           <td>${esc(r.office)}</td>
           <td>${esc(r.item_name)}</td>
           <td>${r.quantity}</td>
           <td class="td-mono">${fmtDate(r.reservation_date)}</td>
-          <td class="td-mono" style="${isOverdue ? 'color:var(--danger);font-weight:600;' : ''}">${fmtDate(r.expected_return_date)}</td>
-          <td>${esc(r.released_by)}</td>
-          <td>${badge(isOverdue ? 'Overdue' : r.status)}</td>
+          <td class="td-mono">${fmtDate(r.expected_return_date)}</td>
+          <td>${statusBadge}</td>
           <td>
-            <button class="btn btn-success btn-sm" onclick="openReservationReturn(${r.id})">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+            <button class="btn btn-success btn-sm"
+              onclick="openReservationReturn(${r.id}, '${esc(r.borrower_name).replace(/'/g,"\\'")}', '${esc(r.item_name).replace(/'/g,"\\'")}', '${esc(r.office).replace(/'/g,"\\'")}')">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:12px;height:12px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
               Return
             </button>
           </td>
-        </tr>`;
-      }).join('');
+        </tr>
+      `;
+    }).join('');
 
-  renderPagination('resPendingPagination', { page, totalPages, total, limit: RES_LIMIT }, loadReservationsActive);
-}
-
-async function loadReservationHistory(page = 1) {
-  resPages.history = page;
-  const res = await API.getReservations({ status: 'Returned', page, limit: RES_LIMIT });
-  if (!res?.ok) return;
-  const { data, total, totalPages } = res.data;
-  _reservationHistoryCache = data;
-
-  document.getElementById('reservationHistoryBody').innerHTML = data.length === 0
-    ? emptyState('No returned reservations yet', 12)
-    : data.map(r => `<tr>
-        <td class="td-mono">#${r.id}</td>
-        <td class="td-name">${esc(r.borrower_name)}</td>
-        <td>${esc(r.office)}</td>
-        <td>${esc(r.item_name)}</td>
-        <td>${r.quantity}</td>
-        <td class="td-mono">${fmtDate(r.reservation_date)}</td>
-        <td class="td-mono">${fmtDate(r.expected_return_date)}</td>
-        <td>${esc(r.returned_by || '—')}</td>
-        <td>${esc(r.received_by || '—')}</td>
-        <td class="td-mono">${fmtDate(r.actual_return_date)}</td>
-        <td>${badge(r.status)}</td>
-        <td style="display:flex;gap:6px;">
-          <button class="btn btn-info btn-sm" onclick="openReservationDetail(${r.id})">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            View
-          </button>
-          <button class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2);"
-            onclick="openDeleteConfirm('reservation', ${r.id}, '${esc(r.borrower_name).replace(/'/g,"\\'")} — ${esc(r.item_name).replace(/'/g,"\\'")}')">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            Delete
-          </button>
-        </td>
-      </tr>`).join('');
-
-  renderPagination('resHistoryPagination', { page, totalPages, total, limit: RES_LIMIT }, loadReservationHistory);
-}
-
-async function loadReservationStats() {
-  const res = await API.getStats();
-  if (!res?.ok) return;
-  const r = res.data.reservations;
-  animateCount(document.getElementById('stat-res-active'),   r.active);
-  animateCount(document.getElementById('stat-res-overdue'),  r.overdue);
-  animateCount(document.getElementById('stat-res-returned'), r.returned);
-  animateCount(document.getElementById('stat-res-total'),    r.total);
-}
-
-function loadReservations() {
-  loadReservationStats();
-  switchResSubTab('active');
-}
-
-// ── Subtab switcher ───────────────────────────────────────────────────────────
-function switchResSubTab(name) {
-  document.querySelectorAll('#tab-reservationLogs .subtab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.subtab === name);
-  });
-  document.querySelectorAll('#tab-reservationLogs .subtab-content').forEach(el => {
-    el.classList.toggle('active', el.id === `res-subtab-${name}`);
-  });
-
-  if (name === 'active')  loadReservationsActive(resPages.active);
-  if (name === 'history') loadReservationHistory(resPages.history);
-}
-
-// ── Detail modal ──────────────────────────────────────────────────────────────
-function openReservationDetail(id) {
-  const r = _reservationHistoryCache.find(x => x.id === id);
-  if (!r) return;
-  document.getElementById('rsdm-title').textContent = `Reservation #${r.id} — ${r.item_name}`;
-  document.getElementById('rsdm-badge').innerHTML = badge(r.status);
-  document.getElementById('rsdm-body').innerHTML = `
-    <div class="detail-section">
-      <div class="detail-section-title">Borrower</div>
-      <div class="detail-grid-2">
-        <div class="detail-field"><span class="detail-label">Name</span><span class="detail-value">${esc(r.borrower_name)}</span></div>
-        <div class="detail-field"><span class="detail-label">Office</span><span class="detail-value">${esc(r.office)}</span></div>
-        <div class="detail-field detail-span-2"><span class="detail-label">Contact</span><span class="detail-value">${r.contact_number || '<span style="color:var(--muted);">Not provided</span>'}</span></div>
+    card.innerHTML = headerHTML + `
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Borrower</th><th>Office</th><th>Item</th><th>Qty</th>
+              <th>Reserved</th><th>Expected Return</th><th>Status</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
       </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Item</div>
-      <div class="detail-grid-2">
-        <div class="detail-field"><span class="detail-label">Item</span><span class="detail-value">${esc(r.item_name)}</span></div>
-        <div class="detail-field"><span class="detail-label">Quantity</span><span class="detail-value">${r.quantity}</span></div>
-      </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Schedule</div>
-      <div class="detail-grid-2">
-        <div class="detail-field"><span class="detail-label">Reserved</span><span class="detail-value mono">${fmtDate(r.reservation_date)}</span></div>
-        <div class="detail-field"><span class="detail-label">Expected Return</span><span class="detail-value mono">${fmtDate(r.expected_return_date)}</span></div>
-        <div class="detail-field"><span class="detail-label">Released By</span><span class="detail-value">${esc(r.released_by)}</span></div>
-      </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Return Details</div>
-      <div class="detail-grid-2">
-        <div class="detail-field"><span class="detail-label">Returned By</span><span class="detail-value">${esc(r.returned_by || '—')}</span></div>
-        <div class="detail-field"><span class="detail-label">Received By</span><span class="detail-value">${esc(r.received_by || '—')}</span></div>
-        <div class="detail-field"><span class="detail-label">Actual Return</span><span class="detail-value mono">${fmtDate(r.actual_return_date)}</span></div>
-        ${r.comments ? `<div class="detail-field detail-span-2"><span class="detail-label">Comments</span><span class="detail-value long">${esc(r.comments)}</span></div>` : ''}
-      </div>
-    </div>`;
-  openModal('reservationDetailModal');
+    `;
+  } catch (err) {
+    card.innerHTML = headerHTML + `<div style="padding:32px 20px;text-align:center;color:var(--danger);font-size:.8rem;">Failed to load reservations.</div>`;
+  }
 }
 
-// ── New reservation form ──────────────────────────────────────────────────────
+// ── New Reservation modal (from dashboard) ────────────────────────────────────
+function openNewReservation() {
+  clearAlert('newReservationAlert');
+  document.getElementById('newReservationForm').reset();
+  document.getElementById('resDateInput').value           = today();
+  document.getElementById('resExpectedReturnInput').value = today();
+  fillOfficeSelect(document.getElementById('resOfficeSelect'));
+  fillEmployeeSelect(document.getElementById('resReleasedBySelect'));
+  document.getElementById('resOfficeOther').style.display   = 'none';
+  document.getElementById('resReleasedByOjt').style.display = 'none';
+  openModal('newReservationModal');
+}
+
 document.getElementById('newReservationForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAlert('newReservationAlert');
   const f = e.target;
 
-  const office = resolveSelectValue(
-    document.getElementById('resOfficeSelect'), 'resOfficeOther', '', 'resOfficeOther'
-  );
-  const released_by = resolveSelectValue(
-    document.getElementById('resReleasedBySelect'), 'resReleasedByOjt', '', 'resReleasedByOjt'
-  );
+  const office      = resolveSelectValue(document.getElementById('resOfficeSelect'),      'resOfficeOther',   '', 'resOfficeOther');
+  const released_by = resolveSelectValue(document.getElementById('resReleasedBySelect'), 'resReleasedByOjt', '', 'resReleasedByOjt');
 
   const body = {
     borrower_name:        f.elements['borrower_name'].value.trim(),
@@ -170,57 +109,82 @@ document.getElementById('newReservationForm')?.addEventListener('submit', async 
     released_by,
   };
 
-  if (!body.borrower_name)        { showAlert('newReservationAlert', 'Borrower name is required.'); return; }
-  if (!body.office)               { showAlert('newReservationAlert', 'Please select or enter an office.'); return; }
-  if (!body.item_name)            { showAlert('newReservationAlert', 'Item name is required.'); return; }
-  if (!body.reservation_date)     { showAlert('newReservationAlert', 'Reservation date is required.'); return; }
-  if (!body.expected_return_date) { showAlert('newReservationAlert', 'Expected return date is required.'); return; }
-  if (body.expected_return_date < body.reservation_date) { showAlert('newReservationAlert', 'Expected return must be after reservation date.'); return; }
-  if (!body.released_by)          { showAlert('newReservationAlert', 'Please select who released the item.'); return; }
+  if (!body.borrower_name)    { showAlert('newReservationAlert', 'Borrower name is required.'); return; }
+  if (!body.office)           { showAlert('newReservationAlert', 'Please select or enter an office.'); return; }
+  if (!body.item_name)        { showAlert('newReservationAlert', 'Item name is required.'); return; }
+  if (!body.reservation_date) { showAlert('newReservationAlert', 'Reservation date is required.'); return; }
+  if (!body.released_by)      { showAlert('newReservationAlert', 'Please select who released the item.'); return; }
 
   const res = await API.createReservation(body);
   if (!res) return;
   if (res.ok) {
     e.target.reset();
-    document.getElementById('resDateInput').value = today();
+    document.getElementById('resDateInput').value           = today();
+    document.getElementById('resExpectedReturnInput').value = today();
     document.getElementById('resOfficeOther').style.display   = 'none';
     document.getElementById('resReleasedByOjt').style.display = 'none';
     closeModal('newReservationModal');
-    loadReservationsActive(1);
-    loadReservationStats();
-  } else showAlert('newReservationAlert', res.data.message || 'Failed to create reservation.');
+    loadReservationMonitor();
+    loadDashboard();
+  } else {
+    showAlert('newReservationAlert', res.data.message || 'Failed to create reservation.');
+  }
 });
 
-// ── Return modal ──────────────────────────────────────────────────────────────
-function openReservationReturn(id) {
-  document.getElementById('resReturnId').value = id;
-  document.getElementById('resReturnedBy').value = '';
+// ── Reservation Return → Borrow History ──────────────────────────────────────
+function openReservationReturn(id, borrowerName, itemName, office) {
+  document.getElementById('resReturnId').value         = id;
+  document.getElementById('resReturnedBy').value       = borrowerName;
   document.getElementById('resActualReturnDate').value = today();
-  document.getElementById('resReturnReceivedBySelect').value = '';
+  document.getElementById('resReturnComments').value   = '';
+  clearAlert('resReturnAlert');
+
+  document.getElementById('resReturnBannerTitle').textContent = `${itemName} — ${office}`;
+  document.getElementById('resReturnBannerSub').textContent   = `Borrower: ${borrowerName}`;
+
+  fillEmployeeSelect(document.getElementById('resReturnReceivedBySelect'));
   document.getElementById('resReturnReceivedByOjt').style.display = 'none';
   document.getElementById('resReturnReceivedByOjt').value = '';
-  document.getElementById('resReturnComments').value = '';
-  clearAlert('resReturnAlert');
+
   openModal('reservationReturnModal');
 }
 
 async function submitReservationReturn() {
-  const id                 = document.getElementById('resReturnId').value;
-  const returned_by        = document.getElementById('resReturnedBy').value.trim();
-  const actual_return_date = document.getElementById('resActualReturnDate').value;
-  const received_by        = resolveSelectValue(
+  const id          = document.getElementById('resReturnId').value;
+  const returned_by = document.getElementById('resReturnedBy').value.trim();
+  const return_date = document.getElementById('resActualReturnDate').value;
+  const comments    = document.getElementById('resReturnComments').value.trim();
+  const received_by = resolveSelectValue(
     document.getElementById('resReturnReceivedBySelect'), 'resReturnReceivedByOjt', '', 'resReturnReceivedByOjt'
   );
-  const comments = document.getElementById('resReturnComments').value.trim();
 
   if (!returned_by) { showAlert('resReturnAlert', 'Please enter who returned the item.'); return; }
   if (!received_by) { showAlert('resReturnAlert', 'Please select who received the item.'); return; }
 
-  const res = await API.returnReservation(id, { returned_by, received_by, actual_return_date, comments });
+  const res = await API.returnReservationAsBorrow(id, { returned_by, received_by, return_date, comments });
   if (!res) return;
   if (res.ok) {
     closeModal('reservationReturnModal');
-    loadReservationsActive(resPages.active);
-    loadReservationStats();
-  } else showAlert('resReturnAlert', res.data.message || 'Failed to process return.');
+    showToast('Item returned and logged in Borrow History ✓', 'success');
+    loadReservationMonitor();
+    loadDashboard();
+  } else {
+    showAlert('resReturnAlert', res.data.message || 'Failed to process return.');
+  }
+}
+
+// ── Toast helper ──────────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position:fixed;bottom:24px;right:24px;z-index:9999;
+    background:${type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'};
+    border:1px solid ${type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'};
+    color:${type === 'success' ? '#34d399' : '#f87171'};
+    padding:12px 18px;border-radius:10px;font-size:.8rem;font-weight:600;
+    box-shadow:0 4px 20px rgba(0,0,0,0.3);
+  `;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
 }

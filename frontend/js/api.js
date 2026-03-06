@@ -63,4 +63,21 @@ const API = {
   createTech4Ed:      (body)        => apiFetch('/tech4ed', 'POST', body),
   createTech4EdEntry: (body)        => apiFetch('/tech4ed/entry', 'POST', body),
   timeoutTech4Ed:     (id)          => apiFetch(`/tech4ed/${id}/timeout`, 'PATCH'),
+
+  // Settings — password gate
+  verifyPassword: (body) => apiFetch('/verify-password', 'POST', body),
+
+  // Offices CRUD
+  createOffice: (body)        => apiFetch('/offices',       'POST',   body),
+  updateOffice: (id, body)    => apiFetch(`/offices/${id}`, 'PATCH',  body),
+  deleteOffice: (id, body)    => apiFetch(`/offices/${id}`, 'DELETE', body),
+
+  // Employees CRUD
+  getAllEmployees: ()          => apiFetch('/employees/all',       'GET'),
+  createEmployee: (body)      => apiFetch('/employees',           'POST',   body),
+  updateEmployee: (id, body)  => apiFetch(`/employees/${id}`,     'PATCH',  body),
+  deleteEmployee: (id, body)  => apiFetch(`/employees/${id}`,     'DELETE', body),
+
+  // Reservation — return as borrow history entry
+  returnReservationAsBorrow: (id, body) => apiFetch(`/reservations/${id}/return-as-borrow`, 'POST', body),
 };

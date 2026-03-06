@@ -1,635 +1,248 @@
-// ── Dashboard module — uses /api/stats for all counts and chart data ──────────
+// ── Dashboard tab — stats, charts, activity feed ──────────────────────────────
+
+let _monthlyChart   = null;
+let _borrowPieChart = null;
 
 async function loadDashboard() {
-  const res = await API.getStats();
-  if (!res?.ok) return;
-  const s = res.data;
-
-  renderDashboardStats(s);
-  renderDonutChart(s.repairs);
-  renderActivityFeed(s.recent);
-  renderOfficeBar(s.officeData);
-  renderRepairTypeChart(s.repairs);
-  renderMonthlyTrendChart(s.monthly);
-  renderBorrowStatusChart(s.borrows);
-  await renderReservationMonitor();
-}
-
-// ── Stat cards ────────────────────────────────────────────────────────────────
-function renderDashboardStats(s) {
-  const setC = (id, v) => animateCount(document.getElementById(id), v || 0);
-
-  // Row 1 — main counts
-  setC('ds-total-repairs',   s.repairs.total);
-  setC('ds-pending-repairs', s.repairs.pending);
-  setC('ds-total-borrowed',  s.borrows.total);
-  setC('ds-pending-borrows', s.borrows.pending);
-
-  // Row 2 — secondary counts
-  setC('ds-released',     s.repairs.released);
-  setC('ds-returned',     s.borrows.returned);
-  setC('ds-reservations', Number(s.reservations.active) + Number(s.reservations.overdue));
-  setC('ds-tech4ed',      s.tech4ed.today);
-}
-
-// ── Reservation Monitor ───────────────────────────────────────────────────────
-// Tracks which month the calendar is showing (offset from current month)
-let _calMonthOffset = 0;
-let _reservationMonitorData = null;
-let _calSelectedDay = null; // null = show whole month, number = specific day
-
-async function renderReservationMonitor(monthOffset) {
-  if (monthOffset !== undefined) {
-    _calMonthOffset = monthOffset;
-    _calSelectedDay = null; // reset day selection when changing month
-  }
-  const container = document.getElementById('reservation-monitor-section');
-  if (!container) return;
-
-  // Only fetch data on first load or if not cached
-  if (_reservationMonitorData === null) {
-    const res = await API.getReservations({ status: 'Active', limit: 100, page: 1 });
+  try {
+    const res = await API.getStats();
     if (!res?.ok) return;
-    _reservationMonitorData = res.data.data;
+    const s = res.data;
+
+    // ── Stat cards ──────────────────────────────────────────────────────────
+    setText('ds-total-repairs',   s.repairs.total       ?? 0);
+    setText('ds-pending-repairs', s.repairs.pending     ?? 0);
+    setText('ds-total-borrowed',  s.borrows.total       ?? 0);
+    setText('ds-pending-borrows', s.borrows.pending     ?? 0);
+    setText('ds-released',        s.repairs.released    ?? 0);
+    setText('ds-returned',        s.borrows.returned    ?? 0);
+    setText('ds-reservations',    s.reservations?.active ?? 0);
+    setText('ds-tech4ed',         s.tech4ed?.today      ?? 0);
+
+    // ── Repair status donut ─────────────────────────────────────────────────
+    renderDonut(s.repairs);
+
+    // ── Office bars ─────────────────────────────────────────────────────────
+    renderOfficeBars(s.officeData || []);
+
+    // ── Repair type bars ────────────────────────────────────────────────────
+    renderRepairTypeBars(s.repairs);
+
+    // ── Monthly trend chart ─────────────────────────────────────────────────
+    renderMonthlyChart(s.monthly || {});
+
+    // ── Borrow status pie ───────────────────────────────────────────────────
+    renderBorrowPie(s.borrows);
+
+    // ── Activity feed ───────────────────────────────────────────────────────
+    renderActivityFeed(s.recent || []);
+
+    // ── Reservation monitor ─────────────────────────────────────────────────
+    loadReservationMonitor();
+
+  } catch (err) {
+    console.error('Dashboard load error:', err);
   }
-  const data = _reservationMonitorData;
-
-  if (data.length === 0) {
-    container.innerHTML = `
-      <div class="card" style="margin-top:0;">
-        <div class="card-header">
-          <span class="card-title">📅 Active Reservations Monitor</span>
-          <span class="card-sub">No active reservations</span>
-        </div>
-        <div class="empty-state" style="padding:32px 20px;">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          <p>No active reservations to display</p>
-        </div>
-      </div>`;
-    return;
-  }
-
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  // Compute the display month based on offset
-  const displayDate = new Date(today.getFullYear(), today.getMonth() + _calMonthOffset, 1);
-  const dispYear = displayDate.getFullYear();
-  const dispMonth = displayDate.getMonth();
-
-  // Filter data for table based on selection
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  let filteredData;
-  let filterLabel;
-
-  if (_calSelectedDay !== null) {
-    // Show only reservations active on the selected day
-    const selDate = new Date(dispYear, dispMonth, _calSelectedDay);
-    selDate.setHours(0,0,0,0);
-    filteredData = data.filter(r => {
-      const resDate = new Date(r.reservation_date); resDate.setHours(0,0,0,0);
-      const retDate = new Date(r.expected_return_date); retDate.setHours(0,0,0,0);
-      return resDate <= selDate && retDate >= selDate;
-    });
-    filterLabel = `${monthNames[dispMonth]} ${_calSelectedDay}, ${dispYear}`;
-  } else {
-    // Show only reservations that overlap with the displayed month
-    const monthStart = new Date(dispYear, dispMonth, 1);
-    const monthEnd   = new Date(dispYear, dispMonth + 1, 0);
-    filteredData = data.filter(r => {
-      const resDate = new Date(r.reservation_date); resDate.setHours(0,0,0,0);
-      const retDate = new Date(r.expected_return_date); retDate.setHours(0,0,0,0);
-      return resDate <= monthEnd && retDate >= monthStart;
-    });
-    filterLabel = `${monthNames[dispMonth]} ${dispYear}`;
-  }
-
-  // Build calendar for the display month
-  const calHtml = buildReservationCalendar(data, today, displayDate);
-  const tableHtml = buildReservationTable(filteredData, today);
-
-  const tableTitle = _calSelectedDay !== null
-    ? `Reservations on <strong style="color:var(--text);">${filterLabel}</strong>`
-    : `Reservations in <strong style="color:var(--text);">${filterLabel}</strong>`;
-
-  const clearBtn = _calSelectedDay !== null
-    ? `<button onclick="_calClearDayFilter()" style="font-size:.68rem;font-weight:600;color:var(--accent);background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:5px;padding:3px 9px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='rgba(59,130,246,0.1)'">✕ Show full month</button>`
-    : '';
-
-  container.innerHTML = `
-    <div class="card" style="margin-top:0;">
-      <div class="card-header" style="padding:16px 20px 14px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:30px;height:30px;border-radius:8px;background:rgba(59,130,246,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <svg width="15" height="15" fill="none" stroke="#60a5fa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          </div>
-          <div>
-            <div class="card-title">Active Reservations Monitor</div>
-            <div class="card-sub">${data.length} active · calendar view + details</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <span style="display:inline-flex;align-items:center;gap:5px;font-size:.68rem;color:var(--text2);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(16,185,129,0.5);display:inline-block;border:1px solid #10b981;"></span>Reserved</span>
-          <span style="display:inline-flex;align-items:center;gap:5px;font-size:.68rem;color:var(--text2);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(239,68,68,0.5);display:inline-block;border:1px solid #ef4444;"></span>Overdue</span>
-          <span style="display:inline-flex;align-items:center;gap:5px;font-size:.68rem;color:var(--text2);"><span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block;"></span>Today</span>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:0;border-top:1px solid var(--border);">
-
-        <!-- Calendar -->
-        <div style="padding:18px 20px;border-right:1px solid var(--border);min-width:280px;">
-          ${calHtml}
-        </div>
-
-        <!-- Table -->
-        <div style="overflow-x:auto;">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap;">
-            <span style="font-size:.75rem;color:var(--text2);">${tableTitle} <span style="color:var(--muted);">(${filteredData.length} record${filteredData.length !== 1 ? 's' : ''})</span></span>
-            ${clearBtn}
-          </div>
-          <table class="data-table" style="min-width:520px;">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Borrower</th>
-                <th>Item</th>
-                <th>Office</th>
-                <th>Qty</th>
-                <th>Reserved Date</th>
-                <th>Expected Return</th>
-                <th>Released By</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>${tableHtml}</tbody>
-          </table>
-        </div>
-      </div>
-    </div>`;
 }
 
-function buildReservationCalendar(data, today, displayDate) {
-  const year  = displayDate.getFullYear();
-  const month = displayDate.getMonth();
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
-
-  const isCurrentMonth = (year === today.getFullYear() && month === today.getMonth());
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  // Build a map of day → events for this month
-  const dayMap = {};
-  data.forEach(r => {
-    const resDate    = new Date(r.reservation_date);
-    const retDate    = new Date(r.expected_return_date);
-    const expRetDate = new Date(r.expected_return_date);
-    expRetDate.setHours(0,0,0,0);
-    const isOverdue  = expRetDate < today;
-
-    // Mark all days from reservation to expected return in the display month
-    const start = new Date(Math.max(resDate, new Date(year, month, 1)));
-    const end   = new Date(Math.min(retDate, new Date(year, month + 1, 0)));
-
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      if (d.getMonth() === month && d.getFullYear() === year) {
-        const day = d.getDate();
-        if (!dayMap[day]) dayMap[day] = [];
-        dayMap[day].push({ id: r.id, item: r.item_name, borrower: r.borrower_name, isOverdue });
-      }
-    }
-  });
-
-  // Month navigation header
-  let html = `
-    <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-      <button
-        onclick="_calNavMonthOffset(${_calMonthOffset - 1})"
-        style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:6px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s;"
-        onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'"
-        onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'"
-        title="Previous month">
-        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
-      </button>
-      <span style="display:flex;flex-direction:column;align-items:center;gap:1px;">
-        <span>${monthNames[month]} ${year}</span>
-        ${!isCurrentMonth ? `<button onclick="_calNavMonthOffset(0)" style="font-size:.55rem;font-weight:600;color:var(--accent);background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:4px;padding:1px 6px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='rgba(59,130,246,0.1)'">Back to Today</button>` : `<span style="font-size:.58rem;font-weight:500;color:var(--muted);">Current Month</span>`}
-      </span>
-      <button
-        onclick="_calNavMonthOffset(${_calMonthOffset + 1})"
-        style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:6px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s;"
-        onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'"
-        onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'"
-        title="Next month">
-        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-      </button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px;">`;
-
-  dayNames.forEach(d => {
-    html += `<div style="text-align:center;font-size:.6rem;font-weight:700;color:var(--muted);padding:2px 0;">${d}</div>`;
-  });
-
-  html += `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">`;
-
-  // Empty cells for days before the 1st
-  for (let i = 0; i < firstDay; i++) {
-    html += `<div style="aspect-ratio:1;"></div>`;
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const isToday   = isCurrentMonth && day === today.getDate();
-    const events    = dayMap[day] || [];
-    const hasEvents = events.length > 0;
-    const hasOverdue = events.some(e => e.isOverdue);
-
-    let bg = 'transparent';
-    let border = '1px solid transparent';
-    let color = 'var(--text2)';
-    let dot = '';
-
-    if (isToday) {
-      bg = 'var(--accent)';
-      color = 'white';
-      border = '1px solid var(--accent)';
-    } else if (hasOverdue) {
-      bg = 'rgba(239,68,68,0.15)';
-      border = '1px solid rgba(239,68,68,0.35)';
-      color = '#f87171';
-    } else if (hasEvents) {
-      bg = 'rgba(16,185,129,0.12)';
-      border = '1px solid rgba(16,185,129,0.3)';
-      color = '#34d399';
-    }
-
-    if (hasEvents && !isToday) {
-      const dotColor = hasOverdue ? '#ef4444' : '#10b981';
-      dot = `<div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:${dotColor};"></div>`;
-    }
-
-    // Tooltip content
-    const tooltipItems = events.slice(0, 3).map(e => e.item).join(', ');
-    const tooltipExtra = events.length > 3 ? ` +${events.length - 3} more` : '';
-    const titleAttr = hasEvents ? `title="${tooltipItems}${tooltipExtra}"` : '';
-
-    const isSelected = (_calSelectedDay === day);
-
-    // Selected day overrides styling
-    if (isSelected && !isToday) {
-      bg = 'var(--accent2)';
-      color = 'white';
-      border = '1px solid var(--accent)';
-    }
-
-    const clickHandler = hasEvents ? `onclick="_calSelectDay(${day})"` : '';
-    const hoverStyle = hasEvents && !isToday && !isSelected
-      ? `onmouseover="this.style.transform='scale(1.12)';this.style.zIndex='1'" onmouseout="this.style.transform='scale(1)';this.style.zIndex=''"` 
-      : '';
-
-    html += `<div ${titleAttr} ${clickHandler} ${hoverStyle} style="aspect-ratio:1;border-radius:5px;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:${isToday || isSelected ? '700' : hasEvents ? '600' : '400'};color:${color};position:relative;cursor:${hasEvents ? 'pointer' : 'default'};transition:all 0.15s;${isSelected ? 'box-shadow:0 0 0 2px var(--accent),0 0 8px var(--accent-glow);' : ''}">
-      ${day}
-      ${dot}
-    </div>`;
-  }
-
-  html += `</div>`;
-
-  // Mini summary below calendar
-  const totalActive  = data.filter(r => { const d = new Date(r.expected_return_date); d.setHours(0,0,0,0); return d >= today; }).length;
-  const totalOverdue = data.filter(r => { const d = new Date(r.expected_return_date); d.setHours(0,0,0,0); return d < today; }).length;
-
-  html += `
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;">
-      <div style="display:flex;flex-direction:column;gap:2px;">
-        <span style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Active</span>
-        <span style="font-size:1.1rem;font-weight:700;color:#34d399;">${totalActive}</span>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:2px;">
-        <span style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Overdue</span>
-        <span style="font-size:1.1rem;font-weight:700;color:#f87171;">${totalOverdue}</span>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:2px;">
-        <span style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Total</span>
-        <span style="font-size:1.1rem;font-weight:700;color:var(--text);">${data.length}</span>
-      </div>
-    </div>`;
-
-  return html;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
 }
 
-// Global helpers so inline onclick can call them
-function _calNavMonthOffset(offset) {
-  _reservationMonitorData = null; // reset cache so fresh data is fetched
-  renderReservationMonitor(offset);
-}
-
-function _calSelectDay(day) {
-  // Toggle: clicking the same day again clears the filter
-  _calSelectedDay = (_calSelectedDay === day) ? null : day;
-  renderReservationMonitor();
-}
-
-function _calClearDayFilter() {
-  _calSelectedDay = null;
-  renderReservationMonitor();
-}
-
-function buildReservationTable(data, today) {
-  if (!data.length) return `<tr><td colspan="9"><div class="empty-state"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><p>No reservations for this ${_calSelectedDay !== null ? 'date' : 'month'}</p></div></td></tr>`;
-
-  return data.map(r => {
-    const expDate = new Date(r.expected_return_date);
-    expDate.setHours(0,0,0,0);
-    const isOverdue = expDate < today;
-
-    // Days until return (or days overdue)
-    const diffMs   = expDate.getTime() - today.getTime();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-    let dueLabel = '';
-    if (diffDays === 0)        dueLabel = `<span style="font-size:.62rem;color:#fbbf24;font-weight:600;">Due today</span>`;
-    else if (diffDays > 0)     dueLabel = `<span style="font-size:.62rem;color:var(--muted);">in ${diffDays}d</span>`;
-    else                       dueLabel = `<span style="font-size:.62rem;color:#f87171;font-weight:600;">${Math.abs(diffDays)}d overdue</span>`;
-
-    const rowStyle = isOverdue ? 'background:rgba(239,68,68,0.04);' : '';
-
-    return `<tr style="${rowStyle}">
-      <td class="td-mono">#${r.id}</td>
-      <td class="td-name">${esc(r.borrower_name)}</td>
-      <td>${esc(r.item_name)}</td>
-      <td style="font-size:.75rem;">${esc(r.office)}</td>
-      <td>${r.quantity}</td>
-      <td class="td-mono">${fmtDate(r.reservation_date)}</td>
-      <td style="white-space:nowrap;">
-        <div class="td-mono" style="${isOverdue ? 'color:#f87171;font-weight:600;' : ''}">${fmtDate(r.expected_return_date)}</div>
-        <div>${dueLabel}</div>
-      </td>
-      <td style="font-size:.75rem;">${esc(r.released_by)}</td>
-      <td>${badge(isOverdue ? 'Overdue' : r.status)}</td>
-    </tr>`;
-  }).join('');
-}
-
-// ── Donut: repair status breakdown ───────────────────────────────────────────
-function renderDonutChart(repairs) {
-  const counts = {
-    Pending:       Number(repairs.pending),
-    Fixed:         Number(repairs.fixed),
-    Unserviceable: Number(repairs.unserviceable),
-    Released:      Number(repairs.released),
-  };
-  const total  = Number(repairs.total);
-  const colors = { Pending: '#f59e0b', Fixed: '#10b981', Unserviceable: '#ef4444', Released: '#818cf8' };
-  const R = 45, CIRC = 2 * Math.PI * R;
-  let offset = 0;
-  let paths = '';
-
-  Object.entries(counts).forEach(([status, count]) => {
-    if (count === 0) return;
-    const len = (count / Math.max(total, 1)) * CIRC;
-    paths += `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${colors[status]}" stroke-width="10"
-      stroke-dasharray="${len} ${CIRC - len}" stroke-dashoffset="${-offset}" stroke-linecap="butt"/>`;
-    offset += len;
-  });
-
-  document.getElementById('donut-svg').innerHTML   = paths;
-  document.getElementById('donut-total').textContent = total;
-
-  document.getElementById('donut-legend').innerHTML = Object.entries(counts).map(([status, count]) => `
-    <li class="legend-item">
-      <div class="legend-left"><span class="legend-dot" style="background:${colors[status]}"></span>${status}</div>
-      <span class="legend-count">${count}</span>
-    </li>`).join('');
-}
-
-// ── Bar: repair outcome breakdown ─────────────────────────────────────────────
-function renderRepairTypeChart(repairs) {
-  const data = [
-    { label: 'Pending',        value: Number(repairs.pending),        color: '#f59e0b' },
-    { label: 'Fixed/Released', value: Number(repairs.fixed) + Number(repairs.released), color: '#10b981' },
-    { label: 'Unserviceable',  value: Number(repairs.unserviceable),  color: '#ef4444' },
+function renderDonut(repairs) {
+  const statuses = [
+    { label: 'Pending',       value: repairs.pending       ?? 0, color: '#fbbf24' },
+    { label: 'Fixed',         value: repairs.fixed         ?? 0, color: '#34d399' },
+    { label: 'Unserviceable', value: repairs.unserviceable ?? 0, color: '#f87171' },
+    { label: 'Released',      value: repairs.released      ?? 0, color: '#60a5fa' },
   ];
-  const max  = Math.max(...data.map(d => d.value), 1);
-  const wrap = document.getElementById('repair-type-bars');
-  if (!wrap) return;
-  wrap.innerHTML = data.map(d => `
-    <div class="bar-row">
-      <div class="bar-label" title="${d.label}">${d.label}</div>
-      <div class="bar-track"><div class="bar-fill" data-width="${(d.value / max * 100).toFixed(1)}%" style="background:${d.color};width:0"></div></div>
-      <div class="bar-count">${d.value}</div>
-    </div>`).join('');
-  setTimeout(animateBars, 50);
+
+  const total = statuses.reduce((s, x) => s + Number(x.value), 0);
+  setText('donut-total', total);
+
+  const svgG  = document.getElementById('donut-svg');
+  const legEl = document.getElementById('donut-legend');
+  if (!svgG || !legEl) return;
+
+  const r = 45, cx = 60, cy = 60, strokeW = 10;
+  const circ = 2 * Math.PI * r;
+  let offset = -circ / 4;
+
+  svgG.innerHTML  = '';
+  legEl.innerHTML = '';
+
+  statuses.forEach(({ label, value, color }) => {
+    const pct  = total ? Number(value) / total : 0;
+    const dash = pct * circ;
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', cx);
+    circle.setAttribute('cy', cy);
+    circle.setAttribute('r', r);
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', color);
+    circle.setAttribute('stroke-width', strokeW);
+    circle.setAttribute('stroke-dasharray', `${dash} ${circ - dash}`);
+    circle.setAttribute('stroke-dashoffset', -offset);
+    svgG.appendChild(circle);
+    offset += dash;
+
+    const li = document.createElement('li');
+    li.className = 'legend-item';
+    li.innerHTML = `
+      <span class="legend-dot" style="background:${color};"></span>
+      <span class="legend-label">${label}</span>
+      <span class="legend-val">${value}</span>
+    `;
+    legEl.appendChild(li);
+  });
 }
 
-// ── Bar: top offices ──────────────────────────────────────────────────────────
-function renderOfficeBar(officeData) {
-  if (!officeData?.length) return;
-  const max = officeData[0].cnt;
-  const barColors = ['#3b82f6','#10b981','#f59e0b','#818cf8','#ef4444','#a855f7','#06b6d4','#84cc16'];
-  const container = document.getElementById('office-bars');
-  if (!container) return;
-  container.innerHTML = officeData.map(({ office, cnt }, i) => `
+function renderOfficeBars(officeData) {
+  const el = document.getElementById('office-bars');
+  if (!el) return;
+  if (!officeData.length) { el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:20px;">No data</div>'; return; }
+
+  const max = Math.max(...officeData.map(o => o.cnt));
+  el.innerHTML = officeData.map(o => `
     <div class="bar-row">
-      <div class="bar-label" title="${office}">${office.replace(' Division','').replace(' of the','')}</div>
-      <div class="bar-track"><div class="bar-fill" data-width="${(cnt / max * 100).toFixed(1)}%" style="background:${barColors[i % barColors.length]};width:0"></div></div>
-      <div class="bar-count">${cnt}</div>
-    </div>`).join('');
-  setTimeout(animateBars, 50);
-}
-
-// ── Activity feed ─────────────────────────────────────────────────────────────
-function renderActivityFeed(recent) {
-  const feed = document.getElementById('activity-feed');
-  if (!recent?.length) {
-    feed.innerHTML = `<li style="padding:32px 20px;text-align:center;color:var(--muted);font-size:.8rem;">No recent activity</li>`;
-    return;
-  }
-
-  // Dot color mapping per kind + status
-  const dotClass = (item) => {
-    if (item.kind === 'repair')  return item.status === 'Released' ? 'released' : 'pending';
-    if (item.kind === 'borrow')  return item.status === 'Returned' ? 'returned' : 'borrowed';
-    return 'borrowed';
-  };
-
-  feed.innerHTML = recent.map(e => `
-    <li class="activity-item">
-      <div class="activity-dot ${dotClass(e)}"></div>
-      <div class="activity-content">
-        <div class="activity-title">${e.item} — ${e.name}</div>
-        <div class="activity-meta">${e.office} · ${e.kind} · ${badge(e.status)} · ${timeAgo(e.ts)}</div>
+      <div class="bar-label" title="${esc(o.office)}">${esc(o.office)}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${max ? (o.cnt / max * 100).toFixed(1) : 0}%;background:var(--info);"></div>
       </div>
-    </li>`).join('');
+      <div class="bar-val">${o.cnt}</div>
+    </div>
+  `).join('');
 }
 
-// ── Canvas: monthly trend bar group ──────────────────────────────────────────
-function renderMonthlyTrendChart(monthly) {
+function renderRepairTypeBars(repairs) {
+  const el = document.getElementById('repair-type-bars');
+  if (!el) return;
+  const data = [
+    { label: 'Fixed',         value: repairs.fixed         ?? 0, color: '#34d399' },
+    { label: 'Unserviceable', value: repairs.unserviceable ?? 0, color: '#f87171' },
+    { label: 'Pending',       value: repairs.pending       ?? 0, color: '#fbbf24' },
+    { label: 'Released',      value: repairs.released      ?? 0, color: '#60a5fa' },
+  ];
+  const max = Math.max(...data.map(d => d.value), 1);
+  el.innerHTML = data.map(d => `
+    <div class="bar-row">
+      <div class="bar-label">${d.label}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(d.value / max * 100).toFixed(1)}%;background:${d.color};"></div>
+      </div>
+      <div class="bar-val">${d.value}</div>
+    </div>
+  `).join('');
+}
+
+function renderMonthlyChart(monthly) {
   const canvas = document.getElementById('monthlyTrendCanvas');
   if (!canvas) return;
 
-  // Build a list of the last 6 months
-  const now = new Date();
-  const months = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      label: d.toLocaleString('default', { month: 'short' }),
-      key:   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-    });
-  }
+  const labelSet = new Set([
+    ...(monthly.repairs      || []).map(r => r.month),
+    ...(monthly.borrows      || []).map(r => r.month),
+    ...(monthly.reservations || []).map(r => r.month),
+  ]);
+  const labels = Array.from(labelSet).sort();
 
-  // Map backend row arrays into key→count lookups
-  const toMap = (rows) => Object.fromEntries(rows.map(r => [r.month, r.cnt]));
-  const rm = toMap(monthly.repairs);
-  const bm = toMap(monthly.borrows);
-  const sm = toMap(monthly.reservations);
+  const toMap = (arr) => Object.fromEntries((arr || []).map(r => [r.month, r.cnt]));
+  const repairMap = toMap(monthly.repairs);
+  const borrowMap = toMap(monthly.borrows);
+  const resMap    = toMap(monthly.reservations);
 
-  drawBarGroupChart(canvas, {
-    labels: months.map(m => m.label),
-    datasets: [
-      { label: 'Repairs',      data: months.map(m => rm[m.key] || 0), color: '#3b82f6' },
-      { label: 'Borrows',      data: months.map(m => bm[m.key] || 0), color: '#10b981' },
-      { label: 'Reservations', data: months.map(m => sm[m.key] || 0), color: '#a855f7' },
-    ]
+  const shortLabels = labels.map(l => {
+    const [y, m] = l.split('-');
+    return `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m - 1]} ${y.slice(2)}`;
+  });
+
+  if (_monthlyChart) { _monthlyChart.destroy(); _monthlyChart = null; }
+
+  const isDark    = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDark ? '#9ca3af' : '#6b7280';
+
+  _monthlyChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: shortLabels,
+      datasets: [
+        { label: 'Repairs',      data: labels.map(l => repairMap[l] || 0), borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)', tension: 0.4, pointRadius: 3 },
+        { label: 'Borrows',      data: labels.map(l => borrowMap[l] || 0), borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.08)', tension: 0.4, pointRadius: 3 },
+        { label: 'Reservations', data: labels.map(l => resMap[l]    || 0), borderColor: '#c084fc', backgroundColor: 'rgba(192,132,252,0.08)', tension: 0.4, pointRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { labels: { color: textColor, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor }, beginAtZero: true },
+      }
+    }
   });
 }
 
-// ── Canvas: borrow status donut ───────────────────────────────────────────────
-function renderBorrowStatusChart(borrows) {
+function renderBorrowPie(borrows) {
   const canvas = document.getElementById('borrowStatusCanvas');
   if (!canvas) return;
-  drawDonutCanvas(canvas, {
-    labels: ['Pending', 'Returned'],
-    data:   [Number(borrows.pending), Number(borrows.returned)],
-    colors: ['#f59e0b', '#10b981'],
+  if (_borrowPieChart) { _borrowPieChart.destroy(); _borrowPieChart = null; }
+
+  const isDark    = document.documentElement.getAttribute('data-theme') !== 'light';
+  const textColor = isDark ? '#9ca3af' : '#6b7280';
+
+  _borrowPieChart = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Pending', 'Returned'],
+      datasets: [{
+        data: [borrows.pending ?? 0, borrows.returned ?? 0],
+        backgroundColor: ['rgba(251,191,36,0.7)', 'rgba(52,211,153,0.7)'],
+        borderColor:     ['#fbbf24', '#34d399'],
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { labels: { color: textColor, font: { size: 11 } } } }
+    }
   });
 }
 
-// ── Canvas helpers (shared drawing functions) ─────────────────────────────────
-
-function drawDonutCanvas(canvas, { labels, data, colors }) {
-  const ctx  = canvas.getContext('2d');
-  const dpr  = window.devicePixelRatio || 1;
-  const size = canvas.parentElement.clientWidth || 200;
-  canvas.width  = size * dpr;
-  canvas.height = size * dpr;
-  canvas.style.width  = size + 'px';
-  canvas.style.height = size + 'px';
-  ctx.scale(dpr, dpr);
-
-  const total = data.reduce((a, b) => a + b, 0) || 1;
-  const cx = size / 2, cy = size / 2;
-  const outer = size * 0.38, inner = size * 0.22;
-  let angle = -Math.PI / 2;
-
-  data.forEach((val, i) => {
-    const sweep = (val / total) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, outer, angle, angle + sweep);
-    ctx.closePath();
-    ctx.fillStyle = colors[i];
-    ctx.fill();
-    angle += sweep;
-  });
-
-  // Cut out the donut hole
-  ctx.beginPath();
-  ctx.arc(cx, cy, inner, 0, Math.PI * 2);
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#101929';
-  ctx.fill();
-
-  // Center label
-  ctx.fillStyle = '#e4eaf4';
-  ctx.font = `bold ${Math.round(size * 0.12)}px DM Sans, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(data.reduce((a, b) => a + b, 0), cx, cy - size * 0.03);
-  ctx.fillStyle = '#4d6480';
-  ctx.font = `${Math.round(size * 0.07)}px DM Sans, sans-serif`;
-  ctx.fillText('Total', cx, cy + size * 0.1);
-
-  const legendEl = canvas.parentElement.querySelector('.canvas-legend');
-  if (legendEl) {
-    legendEl.innerHTML = labels.map((l, i) => `
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:.7rem;color:var(--text2);margin:4px 8px 0 0;">
-        <span style="width:8px;height:8px;border-radius:50%;background:${colors[i]};display:inline-block;"></span>${l}: ${data[i]}
-      </span>`).join('');
-  }
-}
-
-function drawBarGroupChart(canvas, { labels, datasets }) {
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const w   = canvas.parentElement.clientWidth || 400;
-  const h   = 200;
-  canvas.width  = w * dpr;
-  canvas.height = h * dpr;
-  canvas.style.width  = w + 'px';
-  canvas.style.height = h + 'px';
-  ctx.scale(dpr, dpr);
-
-  const pad    = { top: 16, right: 16, bottom: 36, left: 28 };
-  const chartW = w - pad.left - pad.right;
-  const chartH = h - pad.top  - pad.bottom;
-  const allVals = datasets.flatMap(d => d.data);
-  const maxVal  = Math.max(...allVals, 1);
-  const groupW  = chartW / labels.length;
-  const barW    = (groupW - 8) / datasets.length;
-
-  // Horizontal grid lines — compute smart ticks with no duplicates
-  // When maxVal is small (e.g. 1-4), cap tick count to avoid e.g. "1,1,0,0"
-  ctx.strokeStyle = 'rgba(26,38,64,0.8)';
-  ctx.lineWidth   = 1;
-  const tickCount = Math.min(4, Math.ceil(maxVal));
-  for (let i = 0; i <= tickCount; i++) {
-    const fraction = i / tickCount;
-    const y = pad.top + chartH - fraction * chartH;
-    const tickVal = maxVal * fraction;
-    const tickLabel = (tickVal % 1 === 0) ? String(Math.round(tickVal)) : tickVal.toFixed(1);
-    ctx.beginPath();
-    ctx.moveTo(pad.left, y);
-    ctx.lineTo(pad.left + chartW, y);
-    ctx.stroke();
-    ctx.fillStyle = '#4d6480';
-    ctx.font = `${Math.round(w * 0.025 + 8)}px DM Mono, monospace`;
-    ctx.textAlign = 'right';
-    ctx.fillText(tickLabel, pad.left - 4, y + 4);
+function renderActivityFeed(recent) {
+  const feed = document.getElementById('activity-feed');
+  if (!feed) return;
+  if (!recent.length) {
+    feed.innerHTML = '<li style="padding:40px;text-align:center;color:var(--muted);font-size:.8rem;">No recent activity.</li>';
+    return;
   }
 
-  // Bars
-  labels.forEach((label, gi) => {
-    datasets.forEach((ds, di) => {
-      const val = ds.data[gi];
-      const bh  = (val / maxVal) * chartH;
-      const x   = pad.left + gi * groupW + di * barW + 4;
-      const y   = pad.top + chartH - bh;
-      ctx.fillStyle = ds.color + 'cc';
-      // Rounded top corners
-      ctx.beginPath();
-      const r = 3;
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + barW - r, y);
-      ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
-      ctx.lineTo(x + barW, y + bh);
-      ctx.lineTo(x, y + bh);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.fill();
-    });
-    // X-axis label
-    ctx.fillStyle = '#4d6480';
-    ctx.font = `${Math.round(w * 0.025 + 8)}px DM Sans, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(label, pad.left + gi * groupW + groupW / 2, h - 8);
-  });
+  const iconMap = {
+    repair:      { icon: '🔧', color: 'var(--info)' },
+    borrow:      { icon: '📦', color: 'var(--success)' },
+    reservation: { icon: '📅', color: '#c084fc' },
+  };
 
-  const legendEl = canvas.parentElement.querySelector('.canvas-legend');
-  if (legendEl) {
-    legendEl.innerHTML = datasets.map(ds => `
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:.7rem;color:var(--text2);margin:4px 8px 0 0;">
-        <span style="width:8px;height:8px;border-radius:2px;background:${ds.color};display:inline-block;"></span>${ds.label}
-      </span>`).join('');
-  }
+  feed.innerHTML = recent.map(r => {
+    const { icon, color } = iconMap[r.kind] || { icon: '📋', color: 'var(--text2)' };
+    return `
+      <li class="activity-item">
+        <div class="activity-icon" style="color:${color};">${icon}</div>
+        <div class="activity-info">
+          <div class="activity-main">
+            <strong>${esc(r.name)}</strong>
+            <span class="activity-kind">— ${r.item ? esc(r.item) : ''}</span>
+          </div>
+          <div class="activity-meta">
+            <span class="activity-office">${esc(r.office || '')}</span>
+            <span class="activity-status">${r.status}</span>
+            <span class="activity-time">${timeAgo(r.ts)}</span>
+          </div>
+        </div>
+      </li>
+    `;
+  }).join('');
 }
